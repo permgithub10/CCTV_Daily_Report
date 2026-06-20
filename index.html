@@ -9,10 +9,9 @@
 <body>
 
     <div class="container">
-        <!-- Header ปรับปรุงใหม่ -->
+        <!-- Header -->
         <header>
             <h1>🎥 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน 🎥</h1>
-            <!-- ลบ subtitle และข้อความอื่นๆ ออก -->
         </header>
 
         <!-- ฟอร์มบันทึก -->
@@ -118,6 +117,13 @@
             </div>
             <button id="refreshBtn" class="btn-refresh">🔄 โหลดข้อมูลล่าสุด</button>
         </section>
+    </div>
+
+    <!-- ===== Modal สำหรับแสดงรูปขนาดใหญ่ ===== -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage" />
+        <div id="caption"></div>
     </div>
 
     <footer>
