@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>แบบบันทึกการตรวจสอบ CCTV ประจำวัน</title>
+    <title>แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน</title>
     <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -11,8 +11,10 @@
     <div class="container">
         <!-- Header -->
         <header>
-            <h1>📹 แบบบันทึกการตรวจพบสิ่งผิดปกติ <br>และการแก้ไขระบบกล้องวงจรปิด (CCTV) ประจำวัน</h1>
-            <p class="subtitle">บันทึกข้อมูลการตรวจสอบและแก้ไขระบบกล้องวงจรปิด</p>
+            <h1>📹 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน<br>
+                <span style="font-size:0.7em; font-weight:400; color:#4a6a85;">Daily CCTV Defect Report</span>
+            </h1>
+            <p class="subtitle">บันทึกข้อมูลความผิดปกติและการแก้ไขระบบกล้องวงจรปิด</p>
         </header>
 
         <!-- ฟอร์มบันทึก -->
@@ -29,24 +31,24 @@
                 <!-- 2. Cam ID -->
                 <div class="form-group">
                     <label for="camId">🎥 Cam ID (Camera Title) <span class="required">*</span></label>
-                    <input type="text" id="camId" placeholder="เช่น CAM-101, CCTV-02" required />
+                    <input type="text" id="camId" required />
                 </div>
 
                 <!-- 3. โซน/พื้นที่ติดตั้ง -->
                 <div class="form-group">
                     <label for="zone">📍 โซน/พื้นที่ติดตั้ง <span class="required">*</span></label>
-                    <input type="text" id="zone" placeholder="เช่น อาคาร A ชั้น 2, ทางเข้า main" required />
+                    <input type="text" id="zone" required />
                 </div>
 
                 <!-- 4. อาการที่พบ -->
                 <div class="form-group">
                     <label for="issue">⚠️ อาการที่พบ <span class="required">*</span></label>
-                    <textarea id="issue" rows="3" placeholder="ระบุอาการที่พบ..." required></textarea>
+                    <textarea id="issue" rows="3" required></textarea>
                 </div>
 
-                <!-- 5. แนบรูปภาพ (ครั้งที่ 1) -->
+                <!-- 5. แนบรูปภาพ (อาการที่พบ) -->
                 <div class="form-group">
-                    <label for="image1">🖼️ แนบรูปภาพ (ถ้ามี) - ก่อนแก้ไข</label>
+                    <label for="image1">🖼️ แนบรูปภาพ (ถ้ามี) - อาการที่พบ</label>
                     <input type="file" id="image1" accept="image/*" />
                     <div class="preview-container" id="preview1"></div>
                 </div>
@@ -54,7 +56,7 @@
                 <!-- 6. การดำเนินการแก้ไข -->
                 <div class="form-group">
                     <label for="action">🔧 การดำเนินการแก้ไข <span class="required">*</span></label>
-                    <textarea id="action" rows="3" placeholder="ระบุขั้นตอนการแก้ไข..." required></textarea>
+                    <textarea id="action" rows="3" required></textarea>
                 </div>
 
                 <!-- 7. สถานะ -->
@@ -69,7 +71,7 @@
                     </select>
                 </div>
 
-                <!-- 8. แนบรูปภาพ (ครั้งที่ 2) -->
+                <!-- 8. แนบรูปภาพ (หลังแก้ไข) -->
                 <div class="form-group">
                     <label for="image2">🖼️ แนบรูปภาพ (ถ้ามี) - หลังแก้ไข</label>
                     <input type="file" id="image2" accept="image/*" />
@@ -79,7 +81,7 @@
                 <!-- 9. หมายเหตุ -->
                 <div class="form-group">
                     <label for="note">📝 หมายเหตุ (ถ้ามี)</label>
-                    <textarea id="note" rows="2" placeholder="ข้อมูลเพิ่มเติม..."></textarea>
+                    <textarea id="note" rows="2"></textarea>
                 </div>
 
                 <!-- ปุ่ม -->
@@ -92,7 +94,7 @@
             </form>
         </section>
 
-        <!-- ตารางแสดงข้อมูลที่บันทึกแล้ว -->
+        <!-- ตารางแสดงข้อมูล -->
         <section class="records-section">
             <h2>📋 รายการบันทึกทั้งหมด</h2>
             <div class="table-wrapper">
@@ -104,7 +106,7 @@
                             <th>Cam ID</th>
                             <th>โซน</th>
                             <th>อาการ</th>
-                            <th>รูปก่อน</th>
+                            <th>รูปอาการ</th>
                             <th>การแก้ไข</th>
                             <th>สถานะ</th>
                             <th>รูปหลัง</th>
@@ -121,7 +123,7 @@
     </div>
 
     <footer>
-        <p>© 2026 CCTV Report System | พัฒนาด้วย ❤️</p>
+        <p>© 2026 Daily CCTV Defect Report | พัฒนาด้วย ❤️</p>
     </footer>
 
     <script src="js/script.js"></script>
