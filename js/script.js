@@ -1,6 +1,6 @@
 // ===== การตั้งค่า =====
 // 🔹 แก้ไข URL นี้ให้เป็น Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbwsutFHLOoj5LFSI0pk86nGmxh0ba2vQ7n8C_EzUv8yR-yyM_ijsRdDfHI6S72vB4V0/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
 
 // ===== อ้างอิง DOM =====
 const form = document.getElementById('reportForm');
