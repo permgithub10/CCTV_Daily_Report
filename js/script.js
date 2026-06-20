@@ -22,7 +22,6 @@ function fileToWebP(file) {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                // กำหนดขนาดสูงสุด (1200px)
                 const MAX_SIZE = 1200;
                 let width = img.width;
                 let height = img.height;
@@ -45,7 +44,6 @@ function fileToWebP(file) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // แปลงเป็น WebP คุณภาพ 0.8
                 const webpData = canvas.toDataURL('image/webp', 0.8);
                 resolve(webpData);
             };
@@ -78,9 +76,8 @@ async function fetchRecords() {
 // ===== ฟังก์ชันจัดรูปแบบวันที่ (dd-mm-yyyy) =====
 function formatDate(dateStr) {
     if (!dateStr) return '-';
-    // ถ้าเป็นรูปแบบ ISO หรือ Datetime
     let d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr; // ถ้าแปลงไม่ได้ก็แสดงต้นฉบับ
+    if (isNaN(d.getTime())) return dateStr;
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
@@ -100,16 +97,24 @@ function renderTable(records) {
     records.forEach((row, index) => {
         const statusClass = `status-${row.status?.replace(/\s/g, '') || 'รอดำเนินการ'}`;
 
+        // รูปภาพพร้อม onclick เรียก openModal
+        const image1Html = row.image1
+            ? `<img src="${row.image1}" class="thumb" alt="รูปอาการ" onclick="openModal(this.src)" />`
+            : '-';
+        const image2Html = row.image2
+            ? `<img src="${row.image2}" class="thumb" alt="รูปหลัง" onclick="openModal(this.src)" />`
+            : '-';
+
         html += `<tr>
             <td>${index + 1}</td>
             <td>${formatDate(row.date)}</td>
             <td><strong>${row.camId || '-'}</strong></td>
             <td>${row.zone || '-'}</td>
             <td>${row.issue || '-'}</td>
-            <td>${row.image1 ? `<img src="${row.image1}" class="thumb" alt="รูปอาการ" />` : '-'}</td>
+            <td>${image1Html}</td>
             <td>${row.action || '-'}</td>
             <td><span class="status-badge ${statusClass}">${row.status || 'รอดำเนินการ'}</span></td>
-            <td>${row.image2 ? `<img src="${row.image2}" class="thumb" alt="รูปหลัง" />` : '-'}</td>
+            <td>${image2Html}</td>
             <td>${row.note || '-'}</td>
         </tr>`;
     });
@@ -121,7 +126,6 @@ function renderTable(records) {
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // เก็บค่าจากฟอร์ม
     const date = document.getElementById('reportDate').value;
     const camId = document.getElementById('camId').value.trim();
     const zone = document.getElementById('zone').value.trim();
@@ -130,17 +134,14 @@ form.addEventListener('submit', async (e) => {
     const status = document.getElementById('status').value;
     const note = document.getElementById('note').value.trim();
 
-    // ตรวจสอบข้อมูลบังคับ
     if (!date || !camId || !zone || !issue || !action || !status) {
         showMessage('⚠️ กรุณากรอกข้อมูลให้ครบทุกช่องที่มี *', 'error');
         return;
     }
 
-    // แปลงภาพเป็น WebP (บีบอัด)
     const image1Base64 = await fileToWebP(document.getElementById('image1').files[0]);
     const image2Base64 = await fileToWebP(document.getElementById('image2').files[0]);
 
-    // สร้าง payload
     const payload = {
         date,
         camId,
@@ -156,16 +157,13 @@ form.addEventListener('submit', async (e) => {
     showMessage('⏳ กำลังบันทึกข้อมูล กรุณารอสักครู่...', 'loading');
 
     try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        // no-cors ไม่อนุญาตให้อ่าน response
         showMessage('✅ บันทึกข้อมูลสำเร็จ!', 'success');
         form.reset();
         document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
@@ -173,7 +171,6 @@ form.addEventListener('submit', async (e) => {
         document.getElementById('preview2').innerHTML = '';
 
         setTimeout(fetchRecords, 1500);
-
     } catch (err) {
         console.error('❌ บันทึกผิดพลาด:', err);
         showMessage('❌ เกิดข้อผิดพลาดในการบันทึก โปรดลองอีกครั้ง', 'error');
@@ -214,6 +211,33 @@ function previewImage(input, previewId) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+// ===== Modal สำหรับแสดงรูปขนาดใหญ่ =====
+function openModal(src) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modal.style.display = 'block';
+    modalImg.src = src;
+}
+
+// ปิด modal
+document.querySelector('.close').addEventListener('click', function() {
+    document.getElementById('imageModal').style.display = 'none';
+});
+
+// คลิกพื้นหลัง modal ก็ปิด
+document.getElementById('imageModal').addEventListener('click', function(event) {
+    if (event.target === this) {
+        this.style.display = 'none';
+    }
+});
+
+// กดปุ่ม ESC ปิด
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+});
 
 // ===== โหลดข้อมูลเมื่อเปิดหน้า =====
 fetchRecords();
