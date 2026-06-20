@@ -1,1 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>แบบบันทึกการตรวจสอบ CCTV ประจำวัน</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
 
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📹 แบบบันทึกการตรวจพบสิ่งผิดปกติ <br>และการแก้ไขระบบกล้องวงจรปิด (CCTV) ประจำวัน</h1>
+            <p class="subtitle">บันทึกข้อมูลการตรวจสอบและแก้ไขระบบกล้องวงจรปิด</p>
+        </header>
+
+        <!-- ฟอร์มบันทึก -->
+        <section class="form-section">
+            <h2>📝 บันทึกข้อมูล</h2>
+            <form id="reportForm" enctype="multipart/form-data">
+
+                <!-- 1. วันที่ -->
+                <div class="form-group">
+                    <label for="reportDate">📅 วันที่ <span class="required">*</span></label>
+                    <input type="date" id="reportDate" required />
+                </div>
+
+                <!-- 2. Cam ID -->
+                <div class="form-group">
+                    <label for="camId">🎥 Cam ID (Camera Title) <span class="required">*</span></label>
+                    <input type="text" id="camId" placeholder="เช่น CAM-101, CCTV-02" required />
+                </div>
+
+                <!-- 3. โซน/พื้นที่ติดตั้ง -->
+                <div class="form-group">
+                    <label for="zone">📍 โซน/พื้นที่ติดตั้ง <span class="required">*</span></label>
+                    <input type="text" id="zone" placeholder="เช่น อาคาร A ชั้น 2, ทางเข้า main" required />
+                </div>
+
+                <!-- 4. อาการที่พบ -->
+                <div class="form-group">
+                    <label for="issue">⚠️ อาการที่พบ <span class="required">*</span></label>
+                    <textarea id="issue" rows="3" placeholder="ระบุอาการที่พบ..." required></textarea>
+                </div>
+
+                <!-- 5. แนบรูปภาพ (ครั้งที่ 1) -->
+                <div class="form-group">
+                    <label for="image1">🖼️ แนบรูปภาพ (ถ้ามี) - ก่อนแก้ไข</label>
+                    <input type="file" id="image1" accept="image/*" />
+                    <div class="preview-container" id="preview1"></div>
+                </div>
+
+                <!-- 6. การดำเนินการแก้ไข -->
+                <div class="form-group">
+                    <label for="action">🔧 การดำเนินการแก้ไข <span class="required">*</span></label>
+                    <textarea id="action" rows="3" placeholder="ระบุขั้นตอนการแก้ไข..." required></textarea>
+                </div>
+
+                <!-- 7. สถานะ -->
+                <div class="form-group">
+                    <label for="status">📊 สถานะ <span class="required">*</span></label>
+                    <select id="status" required>
+                        <option value="">-- เลือกสถานะ --</option>
+                        <option value="รอดำเนินการ">⏳ รอดำเนินการ</option>
+                        <option value="กำลังดำเนินการ">🔄 กำลังดำเนินการ</option>
+                        <option value="เสร็จสิ้น">✅ เสร็จสิ้น</option>
+                        <option value="ยกเลิก">❌ ยกเลิก</option>
+                    </select>
+                </div>
+
+                <!-- 8. แนบรูปภาพ (ครั้งที่ 2) -->
+                <div class="form-group">
+                    <label for="image2">🖼️ แนบรูปภาพ (ถ้ามี) - หลังแก้ไข</label>
+                    <input type="file" id="image2" accept="image/*" />
+                    <div class="preview-container" id="preview2"></div>
+                </div>
+
+                <!-- 9. หมายเหตุ -->
+                <div class="form-group">
+                    <label for="note">📝 หมายเหตุ (ถ้ามี)</label>
+                    <textarea id="note" rows="2" placeholder="ข้อมูลเพิ่มเติม..."></textarea>
+                </div>
+
+                <!-- ปุ่ม -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">💾 บันทึกข้อมูล</button>
+                    <button type="reset" class="btn-secondary">🔄 ยกเลิก / ล้างฟอร์ม</button>
+                </div>
+
+                <div id="formMessage" class="message"></div>
+            </form>
+        </section>
+
+        <!-- ตารางแสดงข้อมูลที่บันทึกแล้ว -->
+        <section class="records-section">
+            <h2>📋 รายการบันทึกทั้งหมด</h2>
+            <div class="table-wrapper">
+                <table id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>วันที่</th>
+                            <th>Cam ID</th>
+                            <th>โซน</th>
+                            <th>อาการ</th>
+                            <th>รูปก่อน</th>
+                            <th>การแก้ไข</th>
+                            <th>สถานะ</th>
+                            <th>รูปหลัง</th>
+                            <th>หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody">
+                        <tr><td colspan="10" class="loading">⏳ กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button id="refreshBtn" class="btn-refresh">🔄 โหลดข้อมูลล่าสุด</button>
+        </section>
+    </div>
+
+    <footer>
+        <p>© 2026 CCTV Report System | พัฒนาด้วย ❤️</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
