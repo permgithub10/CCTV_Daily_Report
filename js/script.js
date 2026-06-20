@@ -11,6 +11,52 @@ const refreshBtn = document.getElementById('refreshBtn');
 // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้
 document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
 
+// ===== ฟังก์ชันแปลง File เป็น WebP (บีบอัด + resize) =====
+function fileToWebP(file) {
+    return new Promise((resolve) => {
+        if (!file) {
+            resolve('');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // กำหนดขนาดสูงสุด (1200px)
+                const MAX_SIZE = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height = Math.round(height * MAX_SIZE / width);
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width = Math.round(width * MAX_SIZE / height);
+                        height = MAX_SIZE;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // แปลงเป็น WebP คุณภาพ 0.8
+                const webpData = canvas.toDataURL('image/webp', 0.8);
+                resolve(webpData);
+            };
+            img.onerror = () => resolve('');
+            img.src = e.target.result;
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+    });
+}
+
 // ===== อ่านข้อมูลจาก Sheet =====
 async function fetchRecords() {
     recordsBody.innerHTML = '<tr><td colspan="10" class="loading">⏳ กำลังโหลดข้อมูล...</td></tr>';
@@ -29,6 +75,18 @@ async function fetchRecords() {
     }
 }
 
+// ===== ฟังก์ชันจัดรูปแบบวันที่ (dd-mm-yyyy) =====
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    // ถ้าเป็นรูปแบบ ISO หรือ Datetime
+    let d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr; // ถ้าแปลงไม่ได้ก็แสดงต้นฉบับ
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
 // ===== แสดงข้อมูลในตาราง =====
 function renderTable(records) {
     if (!records || records.length === 0) {
@@ -44,11 +102,11 @@ function renderTable(records) {
 
         html += `<tr>
             <td>${index + 1}</td>
-            <td>${row.date || '-'}</td>
+            <td>${formatDate(row.date)}</td>
             <td><strong>${row.camId || '-'}</strong></td>
             <td>${row.zone || '-'}</td>
             <td>${row.issue || '-'}</td>
-            <td>${row.image1 ? `<img src="${row.image1}" class="thumb" alt="รูปก่อน" />` : '-'}</td>
+            <td>${row.image1 ? `<img src="${row.image1}" class="thumb" alt="รูปอาการ" />` : '-'}</td>
             <td>${row.action || '-'}</td>
             <td><span class="status-badge ${statusClass}">${row.status || 'รอดำเนินการ'}</span></td>
             <td>${row.image2 ? `<img src="${row.image2}" class="thumb" alt="รูปหลัง" />` : '-'}</td>
@@ -78,9 +136,9 @@ form.addEventListener('submit', async (e) => {
         return;
     }
 
-    // แปลงภาพเป็น base64
-    const image1Base64 = await fileToBase64(document.getElementById('image1').files[0]);
-    const image2Base64 = await fileToBase64(document.getElementById('image2').files[0]);
+    // แปลงภาพเป็น WebP (บีบอัด)
+    const image1Base64 = await fileToWebP(document.getElementById('image1').files[0]);
+    const image2Base64 = await fileToWebP(document.getElementById('image2').files[0]);
 
     // สร้าง payload
     const payload = {
@@ -95,28 +153,25 @@ form.addEventListener('submit', async (e) => {
         note: note || ''
     };
 
-    // แสดงข้อความกำลังบันทึก
     showMessage('⏳ กำลังบันทึกข้อมูล กรุณารอสักครู่...', 'loading');
 
     try {
         const res = await fetch(API_URL, {
             method: 'POST',
-            mode: 'no-cors', // ใช้ no-cors เพื่อหลีกเลี่ยง CORS (แต่จะไม่สามารถอ่าน response ได้)
+            mode: 'no-cors',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload)
         });
 
-        // เนื่องจาก mode: 'no-cors' ทำให้ไม่สามารถอ่าน response ได้
-        // เราจะถือว่าบันทึกสำเร็จ ถ้าไม่เกิด error
+        // no-cors ไม่อนุญาตให้อ่าน response
         showMessage('✅ บันทึกข้อมูลสำเร็จ!', 'success');
         form.reset();
         document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('preview1').innerHTML = '';
         document.getElementById('preview2').innerHTML = '';
 
-        // โหลดข้อมูลใหม่หลังจากบันทึก (รอสักครู่)
         setTimeout(fetchRecords, 1500);
 
     } catch (err) {
@@ -125,36 +180,15 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-// ===== แปลง File เป็น Base64 =====
-function fileToBase64(file) {
-    return new Promise((resolve) => {
-        if (!file) {
-            resolve('');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            resolve(e.target.result);
-        };
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-    });
-}
-
 // ===== แสดงข้อความ =====
 function showMessage(text, type = 'info') {
     messageDiv.textContent = text;
     messageDiv.className = `message ${type}`;
-    if (type === 'loading') {
-        messageDiv.style.display = 'block';
-    } else {
-        messageDiv.style.display = 'block';
-        // ซ่อนอัตโนมัติหลังจาก 5 วินาที (ยกเว้น error)
-        if (type !== 'error') {
-            setTimeout(() => {
-                messageDiv.style.display = 'none';
-            }, 5000);
-        }
+    messageDiv.style.display = 'block';
+    if (type !== 'error') {
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 5000);
     }
 }
 
