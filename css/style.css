@@ -37,14 +37,11 @@ header h1 {
     letter-spacing: 0.5px;
 }
 
-header h1 br {
-    display: none;
-}
-
-.subtitle {
-    color: #4a6a85;
-    font-size: 16px;
-    margin-top: 6px;
+/* ปรับขนาดตัวอักษรให้อ่านง่ายบนมือถือ */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 22px;
+    }
 }
 
 /* ===== Section Headers ===== */
@@ -316,10 +313,6 @@ footer {
 
     header h1 {
         font-size: 20px;
-    }
-
-    header h1 br {
-        display: block;
     }
 
     .form-section {
