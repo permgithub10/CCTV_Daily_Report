@@ -9,54 +9,45 @@
 <body>
 
     <div class="container">
-        <!-- Header -->
         <header>
             <h1>🎥 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน 🎥</h1>
         </header>
 
-        <!-- ฟอร์มบันทึก -->
         <section class="form-section">
             <h2>📝 บันทึกข้อมูล</h2>
             <form id="reportForm" enctype="multipart/form-data">
 
-                <!-- 1. วันที่ -->
                 <div class="form-group">
                     <label for="reportDate">📅 วันที่ <span class="required">*</span></label>
                     <input type="date" id="reportDate" required />
                 </div>
 
-                <!-- 2. Cam ID -->
                 <div class="form-group">
                     <label for="camId">🎥 Cam ID (Camera Title) <span class="required">*</span></label>
                     <input type="text" id="camId" required />
                 </div>
 
-                <!-- 3. โซน/พื้นที่ติดตั้ง -->
                 <div class="form-group">
                     <label for="zone">📍 โซน/พื้นที่ติดตั้ง <span class="required">*</span></label>
                     <input type="text" id="zone" required />
                 </div>
 
-                <!-- 4. อาการที่พบ -->
                 <div class="form-group">
                     <label for="issue">⚠️ อาการที่พบ <span class="required">*</span></label>
                     <textarea id="issue" rows="3" required></textarea>
                 </div>
 
-                <!-- 5. แนบรูปภาพ (อาการที่พบ) -->
                 <div class="form-group">
                     <label for="image1">🖼️ แนบรูปภาพ (ถ้ามี) - อาการที่พบ</label>
                     <input type="file" id="image1" accept="image/*" />
                     <div class="preview-container" id="preview1"></div>
                 </div>
 
-                <!-- 6. การดำเนินการแก้ไข -->
                 <div class="form-group">
                     <label for="action">🔧 การดำเนินการแก้ไข <span class="required">*</span></label>
                     <textarea id="action" rows="3" required></textarea>
                 </div>
 
-                <!-- 7. สถานะ -->
                 <div class="form-group">
                     <label for="status">📊 สถานะ <span class="required">*</span></label>
                     <select id="status" required>
@@ -68,20 +59,17 @@
                     </select>
                 </div>
 
-                <!-- 8. แนบรูปภาพ (หลังแก้ไข) -->
                 <div class="form-group">
                     <label for="image2">🖼️ แนบรูปภาพ (ถ้ามี) - หลังแก้ไข</label>
                     <input type="file" id="image2" accept="image/*" />
                     <div class="preview-container" id="preview2"></div>
                 </div>
 
-                <!-- 9. หมายเหตุ -->
                 <div class="form-group">
                     <label for="note">📝 หมายเหตุ (ถ้ามี)</label>
                     <textarea id="note" rows="2"></textarea>
                 </div>
 
-                <!-- ปุ่ม -->
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">💾 บันทึกข้อมูล</button>
                     <button type="reset" class="btn-secondary">🔄 ยกเลิก / ล้างฟอร์ม</button>
@@ -91,7 +79,6 @@
             </form>
         </section>
 
-        <!-- ตารางแสดงข้อมูล -->
         <section class="records-section">
             <h2>📋 รายการบันทึกทั้งหมด</h2>
             <div class="table-wrapper">
@@ -119,7 +106,6 @@
         </section>
     </div>
 
-    <!-- ===== Modal สำหรับแสดงรูปขนาดใหญ่ ===== -->
     <div id="imageModal" class="modal">
         <span class="close">&times;</span>
         <img class="modal-content" id="modalImage" />
