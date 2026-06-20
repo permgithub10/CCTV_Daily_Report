@@ -1,17 +1,12 @@
-// ===== การตั้งค่า =====
-// 🔹 แก้ไข URL นี้ให้เป็น Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwfsrj4GcG5twR0fevC67mADYVgNgS3e8ozb5SgQtFyApvgXKUjlj6v0N1YlVLv-SUW/exec';
 
-// ===== อ้างอิง DOM =====
 const form = document.getElementById('reportForm');
 const messageDiv = document.getElementById('formMessage');
 const recordsBody = document.getElementById('recordsBody');
 const refreshBtn = document.getElementById('refreshBtn');
 
-// ตั้งค่าวันที่เริ่มต้นเป็นวันนี้
 document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
 
-// ===== ฟังก์ชันแปลง File เป็น WebP (บีบอัด + resize) =====
 function fileToWebP(file) {
     return new Promise((resolve) => {
         if (!file) {
@@ -55,14 +50,11 @@ function fileToWebP(file) {
     });
 }
 
-// ===== อ่านข้อมูลจาก Sheet =====
 async function fetchRecords() {
     recordsBody.innerHTML = '<tr><td colspan="10" class="loading">⏳ กำลังโหลดข้อมูล...</td></tr>';
-
     try {
         const res = await fetch(`${API_URL}?action=list`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const data = await res.json();
         renderTable(data);
     } catch (err) {
@@ -73,7 +65,6 @@ async function fetchRecords() {
     }
 }
 
-// ===== ฟังก์ชันจัดรูปแบบวันที่ (dd-mm-yyyy) =====
 function formatDate(dateStr) {
     if (!dateStr) return '-';
     let d = new Date(dateStr);
@@ -84,7 +75,6 @@ function formatDate(dateStr) {
     return `${day}-${month}-${year}`;
 }
 
-// ===== แสดงข้อมูลในตาราง =====
 function renderTable(records) {
     if (!records || records.length === 0) {
         recordsBody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#6a8aaa;">
@@ -96,8 +86,6 @@ function renderTable(records) {
     let html = '';
     records.forEach((row, index) => {
         const statusClass = `status-${row.status?.replace(/\s/g, '') || 'รอดำเนินการ'}`;
-
-        // รูปภาพพร้อม onclick เรียก openModal
         const image1Html = row.image1
             ? `<img src="${row.image1}" class="thumb" alt="รูปอาการ" onclick="openModal(this.src)" />`
             : '-';
@@ -118,11 +106,9 @@ function renderTable(records) {
             <td>${row.note || '-'}</td>
         </tr>`;
     });
-
     recordsBody.innerHTML = html;
 }
 
-// ===== บันทึกข้อมูล =====
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -143,59 +129,52 @@ form.addEventListener('submit', async (e) => {
     const image2Base64 = await fileToWebP(document.getElementById('image2').files[0]);
 
     const payload = {
-        date,
-        camId,
-        zone,
-        issue,
+        date, camId, zone, issue, action, status,
         image1: image1Base64 || '',
-        action,
-        status,
         image2: image2Base64 || '',
         note: note || ''
     };
 
-    showMessage('⏳ กำลังบันทึกข้อมูล กรุณารอสักครู่...', 'loading');
+    showMessage('⏳ กำลังบันทึกข้อมูลและอัปโหลดรูปภาพ กรุณารอสักครู่...', 'loading');
 
     try {
-        await fetch(API_URL, {
+        const response = await fetch(API_URL, {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         });
 
-        showMessage('✅ บันทึกข้อมูลสำเร็จ!', 'success');
-        form.reset();
-        document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
-        document.getElementById('preview1').innerHTML = '';
-        document.getElementById('preview2').innerHTML = '';
+        const result = await response.json();
 
-        setTimeout(fetchRecords, 1500);
+        if (result.success) {
+            showMessage('✅ บันทึกข้อมูลสำเร็จ!', 'success');
+            form.reset();
+            document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('preview1').innerHTML = '';
+            document.getElementById('preview2').innerHTML = '';
+            fetchRecords();
+        } else {
+            throw new Error(result.error || 'เกิดข้อผิดพลาดที่ระบบฐานข้อมูล');
+        }
     } catch (err) {
         console.error('❌ บันทึกผิดพลาด:', err);
-        showMessage('❌ เกิดข้อผิดพลาดในการบันทึก โปรดลองอีกครั้ง', 'error');
+        showMessage('❌ เกิดข้อผิดพลาดในการบันทึก: ' + err.message, 'error');
     }
 });
 
-// ===== แสดงข้อความ =====
 function showMessage(text, type = 'info') {
     messageDiv.textContent = text;
     messageDiv.className = `message ${type}`;
     messageDiv.style.display = 'block';
-    if (type !== 'error') {
+    if (type === 'success') {
         setTimeout(() => {
             messageDiv.style.display = 'none';
         }, 5000);
     }
 }
 
-// ===== แสดงตัวอย่างภาพ =====
-document.getElementById('image1').addEventListener('change', (e) => {
-    previewImage(e.target, 'preview1');
-});
-document.getElementById('image2').addEventListener('change', (e) => {
-    previewImage(e.target, 'preview2');
-});
+document.getElementById('image1').addEventListener('change', (e) => { previewImage(e.target, 'preview1'); });
+document.getElementById('image2').addEventListener('change', (e) => { previewImage(e.target, 'preview2'); });
 
 function previewImage(input, previewId) {
     const container = document.getElementById(previewId);
@@ -212,7 +191,6 @@ function previewImage(input, previewId) {
     }
 }
 
-// ===== Modal สำหรับแสดงรูปขนาดใหญ่ =====
 function openModal(src) {
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
@@ -220,27 +198,9 @@ function openModal(src) {
     modalImg.src = src;
 }
 
-// ปิด modal
-document.querySelector('.close').addEventListener('click', function() {
-    document.getElementById('imageModal').style.display = 'none';
-});
+document.querySelector('.close').addEventListener('click', function() { document.getElementById('imageModal').style.display = 'none'; });
+document.getElementById('imageModal').addEventListener('click', function(event) { if (event.target === this) this.style.display = 'none'; });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('imageModal').style.display = 'none'; });
 
-// คลิกพื้นหลัง modal ก็ปิด
-document.getElementById('imageModal').addEventListener('click', function(event) {
-    if (event.target === this) {
-        this.style.display = 'none';
-    }
-});
-
-// กดปุ่ม ESC ปิด
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.getElementById('imageModal').style.display = 'none';
-    }
-});
-
-// ===== โหลดข้อมูลเมื่อเปิดหน้า =====
 fetchRecords();
-
-// ===== ปุ่มรีเฟรช =====
 refreshBtn.addEventListener('click', fetchRecords);
