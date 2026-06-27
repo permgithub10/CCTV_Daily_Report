@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwriLo5UZR8IVnp9zfsnXtPAJ-hWiYZWJPrukUC-fmHO-fevGwuEs-k1IV5OJuICcW1/exec';
 
 // ============================================================
 //  State
