@@ -1,246 +1,656 @@
-// ===== การตั้งค่า =====
-// 🔹 แก้ไข URL นี้ให้เป็น Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbxjr75Z1yYBaWEqSePgS2BucApVYeGm2a7ZxAfHvgYpFKWI1LE1xI8n84s3gHVYt7H5/exec';
+// ============================================================
+//  CCTV System - Frontend Logic v2.0
+// ============================================================
 
-// ===== อ้างอิง DOM =====
-const form = document.getElementById('reportForm');
-const messageDiv = document.getElementById('formMessage');
-const recordsBody = document.getElementById('recordsBody');
-const refreshBtn = document.getElementById('refreshBtn');
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
 
-// ตั้งค่าวันที่เริ่มต้นเป็นวันนี้
-document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+// ============================================================
+//  State
+// ============================================================
+let cctvData    = [];
+let jobData     = [];
+let adminSheet  = 'cctv';   // active sheet in admin
+let editRow     = null;      // current row being edited
+let cctvChart   = null;
+let jobStatusChart = null;
+let jobTypeChart   = null;
+let isLoggedIn  = false;
 
-// ===== ฟังก์ชันแปลง File เป็น WebP (บีบอัด + resize) =====
-function fileToWebP(file) {
-    return new Promise((resolve) => {
-        if (!file) {
-            resolve('');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const MAX_SIZE = 1200;
-                let width = img.width;
-                let height = img.height;
+// ============================================================
+//  Page & Navigation
+// ============================================================
+const pageHeaders = {
+  cctv:      '📷 รายงานความผิดปกติ CCTV',
+  job:       '📋 ทะเบียนรับแจ้งงาน',
+  dashboard: '📊 Dashboard',
+  admin:     '🔐 Admin'
+};
 
-                if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height = Math.round(height * MAX_SIZE / width);
-                        width = MAX_SIZE;
-                    }
-                } else {
-                    if (height > MAX_SIZE) {
-                        width = Math.round(width * MAX_SIZE / height);
-                        height = MAX_SIZE;
-                    }
-                }
+function switchPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
 
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
+  document.getElementById(`page-${name}`).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('headerTitle').textContent = pageHeaders[name] || '';
 
-                const webpData = canvas.toDataURL('image/webp', 0.8);
-                resolve(webpData);
-            };
-            img.onerror = () => resolve('');
-            img.src = e.target.result;
-        };
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-    });
+  // Lazy-load data on first visit
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'admin' && isLoggedIn) fetchAdminData();
 }
 
-// ===== อ่านข้อมูลจาก Sheet =====
-async function fetchRecords() {
-    recordsBody.innerHTML = '<tr><td colspan="10" class="loading">⏳ กำลังโหลดข้อมูล...</td></tr>';
-
-    try {
-        const res = await fetch(`${API_URL}?action=list`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const data = await res.json();
-        renderTable(data);
-    } catch (err) {
-        console.error('❌ โหลดข้อมูลผิดพลาด:', err);
-        recordsBody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#a13030;">
-            ❌ ไม่สามารถโหลดข้อมูลได้ โปรดตรวจสอบ API URL หรือลองอีกครั้ง
-        </td></tr>`;
-    }
-}
-
-// ===== ฟังก์ชันจัดรูปแบบวันที่ (dd-mm-yyyy) =====
+// ============================================================
+//  Utilities
+// ============================================================
 function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    let d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
-// ===== แสดงข้อมูลในตาราง =====
-function renderTable(records) {
-    if (!records || records.length === 0) {
-        recordsBody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#6a8aaa;">
-            📭 ยังไม่มีบันทึกข้อมูล
-        </td></tr>`;
-        return;
-    }
-
-    let html = '';
-    records.forEach((row, index) => {
-        const statusClass = `status-${row.status?.replace(/\s/g, '') || 'รอดำเนินการ'}`;
-
-        // รูปภาพพร้อม onclick เรียก openModal
-        const image1Html = row.image1
-            ? `<img src="${row.image1}" class="thumb" alt="รูปอาการ" onclick="openModal(this.src)" />`
-            : '-';
-        const image2Html = row.image2
-            ? `<img src="${row.image2}" class="thumb" alt="รูปหลัง" onclick="openModal(this.src)" />`
-            : '-';
-
-        html += `<tr>
-            <td>${index + 1}</td>
-            <td>${formatDate(row.date)}</td>
-            <td><strong>${row.camId || '-'}</strong></td>
-            <td>${row.zone || '-'}</td>
-            <td>${row.issue || '-'}</td>
-            <td>${image1Html}</td>
-            <td>${row.action || '-'}</td>
-            <td><span class="status-badge ${statusClass}">${row.status || 'รอดำเนินการ'}</span></td>
-            <td>${image2Html}</td>
-            <td>${row.note || '-'}</td>
-        </tr>`;
-    });
-
-    recordsBody.innerHTML = html;
+function statusBadge(s) {
+  return `<span class="badge badge-${(s||'').replace(/\s/g,'')}">${s || '-'}</span>`;
 }
 
-// ===== บันทึกข้อมูล =====
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+function thumbImg(url) {
+  if (!url) return '-';
+  return `<img class="thumb" src="${url}" alt="รูป" onclick="openImgModal('${url}')" />`;
+}
 
-    const date = document.getElementById('reportDate').value;
-    const camId = document.getElementById('camId').value.trim();
-    const zone = document.getElementById('zone').value.trim();
-    const issue = document.getElementById('issue').value.trim();
-    const action = document.getElementById('action').value.trim();
-    const status = document.getElementById('status').value;
-    const note = document.getElementById('note').value.trim();
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = `msg-box ${type}`;
+  if (type !== 'error') setTimeout(() => { el.className = 'msg-box'; }, 5000);
+}
 
-    if (!date || !camId || !zone || !issue || !action || !status) {
-        showMessage('⚠️ กรุณากรอกข้อมูลให้ครบทุกช่องที่มี *', 'error');
-        return;
-    }
-
-    const image1Base64 = await fileToWebP(document.getElementById('image1').files[0]);
-    const image2Base64 = await fileToWebP(document.getElementById('image2').files[0]);
-
-    const payload = {
-        date,
-        camId,
-        zone,
-        issue,
-        image1: image1Base64 || '',
-        action,
-        status,
-        image2: image2Base64 || '',
-        note: note || ''
+// ============================================================
+//  Image Utilities
+// ============================================================
+function fileToWebP(file) {
+  return new Promise(resolve => {
+    if (!file) { resolve(''); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h*MAX/w); w = MAX; } }
+        else        { if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; } }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/webp', 0.8));
+      };
+      img.onerror = () => resolve('');
+      img.src = e.target.result;
     };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
 
-    showMessage('⏳ กำลังบันทึกข้อมูล กรุณารอสักครู่...', 'loading');
+function setupImagePreview(inputId, previewId, phId) {
+  document.getElementById(inputId).addEventListener('change', e => {
+    const file = e.target.files[0];
+    const ph = document.getElementById(phId);
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    if (file) {
+      ph.style.display = 'none';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      ph.style.display = '';
+    }
+  });
+}
 
+// Drag-and-drop for dropzones
+function setupDropzone(dzId, inputId, previewId, phId) {
+  const dz = document.getElementById(dzId);
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; });
+  dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = document.getElementById(inputId);
+      const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+      input.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
+function openImgModal(src) {
+  const m = document.getElementById('imgModal');
+  document.getElementById('modalImg').src = src;
+  m.style.display = 'block';
+}
+
+// ============================================================
+//  PAGE 1 — CCTV Report
+// ============================================================
+async function fetchCctv() {
+  document.getElementById('cctvBody').innerHTML = `<tr><td colspan="10" class="tbl-loading">⏳ กำลังโหลด...</td></tr>`;
+  try {
+    const res  = await fetch(`${API_URL}?action=list&sheet=cctv`);
+    cctvData   = await res.json();
+    renderCctvTable(cctvData);
+  } catch(e) {
+    document.getElementById('cctvBody').innerHTML = `<tr><td colspan="10" class="tbl-loading" style="color:#991b1b">❌ โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+  }
+}
+
+function renderCctvTable(data) {
+  const tbody = document.getElementById('cctvBody');
+  if (!data || !data.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="tbl-loading">📭 ยังไม่มีข้อมูล</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td style="white-space:nowrap">${formatDate(r.date)}</td>
+      <td><strong>${r.camId||'-'}</strong></td>
+      <td>${r.zone||'-'}</td>
+      <td>${r.issue||'-'}</td>
+      <td>${thumbImg(r.image1)}</td>
+      <td>${r.action||'-'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>${thumbImg(r.image2)}</td>
+      <td>${r.note||'-'}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('cctvForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = {
+    action    : 'add',
+    sheet     : 'cctv',
+    date      : document.getElementById('c_date').value,
+    camId     : document.getElementById('c_camId').value.trim(),
+    zone      : document.getElementById('c_zone').value.trim(),
+    issue     : document.getElementById('c_issue').value.trim(),
+    actionTxt : document.getElementById('c_action').value.trim(),
+    status    : document.getElementById('c_status').value,
+    note      : document.getElementById('c_note').value.trim()
+  };
+
+  showMsg('cctvMsg','⏳ กำลังบันทึก...','loading');
+  data.image1 = await fileToWebP(document.getElementById('c_image1').files[0]);
+  data.image2 = await fileToWebP(document.getElementById('c_image2').files[0]);
+
+  try {
+    await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    showMsg('cctvMsg','✅ บันทึกสำเร็จ!','success');
+    resetCctvForm();
+    setTimeout(fetchCctv, 1500);
+  } catch(err) {
+    showMsg('cctvMsg','❌ เกิดข้อผิดพลาด โปรดลองอีกครั้ง','error');
+  }
+});
+
+function resetCctvForm() {
+  document.getElementById('cctvForm').reset();
+  document.getElementById('c_date').value = todayStr();
+  document.getElementById('preview1').innerHTML = '';
+  document.getElementById('preview2').innerHTML = '';
+  document.getElementById('ph1').style.display = '';
+  document.getElementById('ph2').style.display = '';
+}
+
+// ============================================================
+//  PAGE 2 — Job Request
+// ============================================================
+async function fetchJob() {
+  document.getElementById('jobBody').innerHTML = `<tr><td colspan="11" class="tbl-loading">⏳ กำลังโหลด...</td></tr>`;
+  try {
+    const res = await fetch(`${API_URL}?action=list&sheet=job`);
+    jobData   = await res.json();
+    renderJobTable(jobData);
+  } catch(e) {
+    document.getElementById('jobBody').innerHTML = `<tr><td colspan="11" class="tbl-loading" style="color:#991b1b">❌ โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+  }
+}
+
+function renderJobTable(data) {
+  const tbody = document.getElementById('jobBody');
+  if (!data || !data.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="tbl-loading">📭 ยังไม่มีข้อมูล</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td style="white-space:nowrap">${formatDate(r.date)}</td>
+      <td><strong>${r.jobNo||'-'}</strong></td>
+      <td><span class="badge badge-${(r.jobType||'').replace(/\s/g,'')}">${r.jobType||'-'}</span></td>
+      <td>${r.location||'-'}</td>
+      <td>${r.detail||'-'}</td>
+      <td>${r.reporter||'-'}</td>
+      <td>${r.assignee||'-'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="white-space:nowrap">${formatDate(r.doneDate)}</td>
+      <td>${r.note||'-'}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('jobForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = {
+    action   : 'add',
+    sheet    : 'job',
+    date     : document.getElementById('j_date').value,
+    jobNo    : document.getElementById('j_jobNo').value.trim(),
+    jobType  : document.getElementById('j_jobType').value,
+    location : document.getElementById('j_location').value.trim(),
+    detail   : document.getElementById('j_detail').value.trim(),
+    reporter : document.getElementById('j_reporter').value.trim(),
+    assignee : document.getElementById('j_assignee').value.trim(),
+    status   : document.getElementById('j_status').value,
+    doneDate : document.getElementById('j_doneDate').value,
+    note     : document.getElementById('j_note').value.trim()
+  };
+
+  showMsg('jobMsg','⏳ กำลังบันทึก...','loading');
+  try {
+    await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    showMsg('jobMsg','✅ บันทึกสำเร็จ!','success');
+    document.getElementById('jobForm').reset();
+    document.getElementById('j_date').value = todayStr();
+    setTimeout(fetchJob, 1500);
+  } catch(err) {
+    showMsg('jobMsg','❌ เกิดข้อผิดพลาด โปรดลองอีกครั้ง','error');
+  }
+});
+
+// ============================================================
+//  PAGE 3 — Dashboard
+// ============================================================
+let dashInit = false;
+
+function switchDash(type, btn) {
+  document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dash-cctv').style.display = type === 'cctv' ? '' : 'none';
+  document.getElementById('dash-job').style.display  = type === 'job'  ? '' : 'none';
+}
+
+async function renderDashboard() {
+  // Ensure data is loaded
+  if (!cctvData.length) {
     try {
-        await fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+      const r = await fetch(`${API_URL}?action=list&sheet=cctv`);
+      cctvData = await r.json();
+    } catch(e) {}
+  }
+  if (!jobData.length) {
+    try {
+      const r = await fetch(`${API_URL}?action=list&sheet=job`);
+      jobData = await r.json();
+    } catch(e) {}
+  }
 
-        showMessage('✅ บันทึกข้อมูลสำเร็จ!', 'success');
-        form.reset();
-        document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
-        document.getElementById('preview1').innerHTML = '';
-        document.getElementById('preview2').innerHTML = '';
-
-        setTimeout(fetchRecords, 1500);
-    } catch (err) {
-        console.error('❌ บันทึกผิดพลาด:', err);
-        showMessage('❌ เกิดข้อผิดพลาดในการบันทึก โปรดลองอีกครั้ง', 'error');
-    }
-});
-
-// ===== แสดงข้อความ =====
-function showMessage(text, type = 'info') {
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = 'block';
-    if (type !== 'error') {
-        setTimeout(() => {
-            messageDiv.style.display = 'none';
-        }, 5000);
-    }
+  renderCctvDash();
+  renderJobDash();
 }
 
-// ===== แสดงตัวอย่างภาพ =====
-document.getElementById('image1').addEventListener('change', (e) => {
-    previewImage(e.target, 'preview1');
-});
-document.getElementById('image2').addEventListener('change', (e) => {
-    previewImage(e.target, 'preview2');
-});
-
-function previewImage(input, previewId) {
-    const container = document.getElementById(previewId);
-    container.innerHTML = '';
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'ตัวอย่างรูป';
-            container.appendChild(img);
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
+function countByKey(arr, key) {
+  return arr.reduce((acc, r) => {
+    const k = r[key] || 'ไม่ระบุ';
+    acc[k] = (acc[k]||0) + 1;
+    return acc;
+  }, {});
 }
 
-// ===== Modal สำหรับแสดงรูปขนาดใหญ่ =====
-function openModal(src) {
-    const modal = document.getElementById('imageModal');
-    const modalImg = document.getElementById('modalImage');
-    modal.style.display = 'block';
-    modalImg.src = src;
+const STATUS_COLORS = {
+  'รอดำเนินการ'    : '#fbbf24',
+  'กำลังดำเนินการ' : '#60a5fa',
+  'เสร็จสิ้น'       : '#34d399',
+  'ยกเลิก'          : '#f87171'
+};
+function colorArr(keys) { return keys.map(k => STATUS_COLORS[k] || '#a78bfa'); }
+
+function renderCctvDash() {
+  const total    = cctvData.length;
+  const pending  = cctvData.filter(r => r.status === 'รอดำเนินการ').length;
+  const inprog   = cctvData.filter(r => r.status === 'กำลังดำเนินการ').length;
+  const done     = cctvData.filter(r => r.status === 'เสร็จสิ้น').length;
+
+  document.getElementById('cctvStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">รายการทั้งหมด</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#d97706">${pending}</div><div class="stat-label">รอดำเนินการ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#2563eb">${inprog}</div><div class="stat-label">กำลังดำเนินการ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#16a34a">${done}</div><div class="stat-label">เสร็จสิ้น</div></div>
+  `;
+
+  // Doughnut chart
+  const statusCount = countByKey(cctvData, 'status');
+  const labels = Object.keys(statusCount);
+  const vals   = Object.values(statusCount);
+
+  if (cctvChart) cctvChart.destroy();
+  const ctx = document.getElementById('cctvStatusChart').getContext('2d');
+  cctvChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colorArr(labels), borderWidth: 2 }] },
+    options: { plugins: { legend: { position:'bottom', labels:{font:{size:11}} } }, cutout:'65%' }
+  });
+
+  // Recent 5
+  const recent = [...cctvData].reverse().slice(0,5);
+  document.getElementById('cctvRecent').innerHTML = recent.length
+    ? recent.map(r => `
+        <div class="recent-item">
+          <div class="ri-date">${formatDate(r.date)}</div>
+          <strong>${r.camId}</strong> — ${r.zone}<br/>
+          <small>${r.issue?.substring(0,40)}${r.issue?.length>40?'...':''}</small>
+          &nbsp;${statusBadge(r.status)}
+        </div>`).join('')
+    : '<p style="color:var(--text-muted);font-size:13px">ยังไม่มีข้อมูล</p>';
 }
 
-// ปิด modal
-document.querySelector('.close').addEventListener('click', function() {
-    document.getElementById('imageModal').style.display = 'none';
-});
+function renderJobDash() {
+  const total   = jobData.length;
+  const pending = jobData.filter(r => r.status === 'รอดำเนินการ').length;
+  const inprog  = jobData.filter(r => r.status === 'กำลังดำเนินการ').length;
+  const done    = jobData.filter(r => r.status === 'เสร็จสิ้น').length;
 
-// คลิกพื้นหลัง modal ก็ปิด
-document.getElementById('imageModal').addEventListener('click', function(event) {
-    if (event.target === this) {
-        this.style.display = 'none';
+  document.getElementById('jobStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">รายการทั้งหมด</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#d97706">${pending}</div><div class="stat-label">รอดำเนินการ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#2563eb">${inprog}</div><div class="stat-label">กำลังดำเนินการ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#16a34a">${done}</div><div class="stat-label">เสร็จสิ้น</div></div>
+  `;
+
+  const sc = countByKey(jobData, 'status');
+  const sl = Object.keys(sc);
+  if (jobStatusChart) jobStatusChart.destroy();
+  jobStatusChart = new Chart(document.getElementById('jobStatusChart').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels:sl, datasets:[{ data:Object.values(sc), backgroundColor:colorArr(sl), borderWidth:2 }] },
+    options: { plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}, cutout:'65%' }
+  });
+
+  const tc = countByKey(jobData, 'jobType');
+  const tl = Object.keys(tc);
+  if (jobTypeChart) jobTypeChart.destroy();
+  jobTypeChart = new Chart(document.getElementById('jobTypeChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: tl,
+      datasets:[{ data:Object.values(tc), backgroundColor:['#818cf8','#f472b6','#fb923c'], borderRadius:6 }]
+    },
+    options: {
+      plugins:{legend:{display:false}},
+      scales:{ y:{ beginAtZero:true, ticks:{stepSize:1} } }
     }
-});
+  });
+}
 
-// กดปุ่ม ESC ปิด
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.getElementById('imageModal').style.display = 'none';
+// ============================================================
+//  PAGE 4 — Admin
+// ============================================================
+async function doLogin() {
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  if (!user || !pass) { showMsg('loginMsg','⚠️ กรุณากรอก username และ password','error'); return; }
+
+  showMsg('loginMsg','⏳ กำลังตรวจสอบ...','loading');
+  try {
+    const res  = await fetch(`${API_URL}?action=login&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
+    const data = await res.json();
+    if (data.success) {
+      isLoggedIn = true;
+      document.getElementById('loginPanel').style.display  = 'none';
+      document.getElementById('adminPanel').style.display  = '';
+      fetchAdminData();
+    } else {
+      showMsg('loginMsg','❌ username หรือ password ไม่ถูกต้อง','error');
     }
+  } catch(e) {
+    showMsg('loginMsg','❌ ไม่สามารถเชื่อมต่อได้ โปรดลองอีกครั้ง','error');
+  }
+}
+
+function doLogout() {
+  isLoggedIn = false;
+  document.getElementById('loginPanel').style.display = '';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+function switchAdminSheet(type, btn) {
+  adminSheet = type;
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('adminTableTitle').textContent = type === 'cctv' ? '📷 CCTV Report' : '📋 Job Request';
+  fetchAdminData();
+}
+
+async function fetchAdminData() {
+  const colSpan = adminSheet === 'cctv' ? 12 : 13;
+  document.getElementById('adminBody').innerHTML = `<tr><td colspan="${colSpan}" class="tbl-loading">⏳ กำลังโหลด...</td></tr>`;
+  try {
+    const res  = await fetch(`${API_URL}?action=list&sheet=${adminSheet}`);
+    const data = await res.json();
+    if (adminSheet === 'cctv') { cctvData = data; renderAdminCctv(data); }
+    else                        { jobData  = data; renderAdminJob(data);  }
+  } catch(e) {
+    document.getElementById('adminBody').innerHTML = `<tr><td class="tbl-loading" style="color:#991b1b" colspan="12">❌ โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+  }
+}
+
+function renderAdminCctv(data) {
+  document.getElementById('adminThead').innerHTML = `<tr>
+    <th>#</th><th>วันที่</th><th>Cam ID</th><th>โซน</th><th>อาการ</th>
+    <th>รูปก่อน</th><th>การแก้ไข</th><th>สถานะ</th><th>รูปหลัง</th><th>หมายเหตุ</th>
+    <th colspan="2">จัดการ</th>
+  </tr>`;
+  if (!data.length) {
+    document.getElementById('adminBody').innerHTML = `<tr><td colspan="12" class="tbl-loading">📭 ยังไม่มีข้อมูล</td></tr>`;
+    return;
+  }
+  document.getElementById('adminBody').innerHTML = data.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td style="white-space:nowrap">${formatDate(r.date)}</td>
+      <td><strong>${r.camId||'-'}</strong></td>
+      <td>${r.zone||'-'}</td>
+      <td>${r.issue||'-'}</td>
+      <td>${thumbImg(r.image1)}</td>
+      <td>${r.action||'-'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>${thumbImg(r.image2)}</td>
+      <td>${r.note||'-'}</td>
+      <td><button class="btn btn-sm btn-edit" onclick="openEditCctv(${i})">✏️ แก้ไข</button></td>
+      <td><button class="btn btn-sm btn-del"  onclick="deleteRow(${r.rowIndex})">🗑️ ลบ</button></td>
+    </tr>`).join('');
+}
+
+function renderAdminJob(data) {
+  document.getElementById('adminThead').innerHTML = `<tr>
+    <th>#</th><th>วันที่</th><th>เลขที่</th><th>ประเภท</th><th>สถานที่</th>
+    <th>รายละเอียด</th><th>ผู้แจ้ง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th>
+    <th>วันที่เสร็จ</th><th>หมายเหตุ</th><th colspan="2">จัดการ</th>
+  </tr>`;
+  if (!data.length) {
+    document.getElementById('adminBody').innerHTML = `<tr><td colspan="13" class="tbl-loading">📭 ยังไม่มีข้อมูล</td></tr>`;
+    return;
+  }
+  document.getElementById('adminBody').innerHTML = data.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td style="white-space:nowrap">${formatDate(r.date)}</td>
+      <td><strong>${r.jobNo||'-'}</strong></td>
+      <td><span class="badge badge-${(r.jobType||'').replace(/\s/g,'')}">${r.jobType||'-'}</span></td>
+      <td>${r.location||'-'}</td>
+      <td>${r.detail||'-'}</td>
+      <td>${r.reporter||'-'}</td>
+      <td>${r.assignee||'-'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="white-space:nowrap">${formatDate(r.doneDate)}</td>
+      <td>${r.note||'-'}</td>
+      <td><button class="btn btn-sm btn-edit" onclick="openEditJob(${i})">✏️ แก้ไข</button></td>
+      <td><button class="btn btn-sm btn-del"  onclick="deleteRow(${r.rowIndex})">🗑️ ลบ</button></td>
+    </tr>`).join('');
+}
+
+// ---- Edit CCTV ----
+function openEditCctv(idx) {
+  const r = cctvData[idx];
+  editRow = r;
+  document.getElementById('editModalTitle').textContent = `✏️ แก้ไข CCTV — ${r.camId}`;
+  document.getElementById('editModalBody').innerHTML = `
+    <div class="form-row two-col">
+      <div class="form-group"><label>วันที่</label><input type="date" id="e_date" value="${r.date||''}"/></div>
+      <div class="form-group"><label>Cam ID</label><input type="text" id="e_camId" value="${r.camId||''}"/></div>
+    </div>
+    <div class="form-group"><label>โซน/พื้นที่</label><input type="text" id="e_zone" value="${r.zone||''}"/></div>
+    <div class="form-group"><label>อาการที่พบ</label><textarea id="e_issue" rows="2">${r.issue||''}</textarea></div>
+    <div class="form-group"><label>การดำเนินการ</label><textarea id="e_action" rows="2">${r.action||''}</textarea></div>
+    <div class="form-row two-col">
+      <div class="form-group"><label>สถานะ</label>
+        <select id="e_status">
+          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น','ยกเลิก'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>หมายเหตุ</label><input type="text" id="e_note" value="${r.note||''}"/></div>
+    </div>
+  `;
+  document.getElementById('editModal').style.display = 'block';
+}
+
+// ---- Edit Job ----
+function openEditJob(idx) {
+  const r = jobData[idx];
+  editRow = r;
+  document.getElementById('editModalTitle').textContent = `✏️ แก้ไขงาน — ${r.jobNo}`;
+  document.getElementById('editModalBody').innerHTML = `
+    <div class="form-row two-col">
+      <div class="form-group"><label>วันที่รับแจ้ง</label><input type="date" id="e_date" value="${r.date||''}"/></div>
+      <div class="form-group"><label>เลขที่ใบแจ้ง</label><input type="text" id="e_jobNo" value="${r.jobNo||''}"/></div>
+    </div>
+    <div class="form-row two-col">
+      <div class="form-group"><label>ประเภทงาน</label>
+        <select id="e_jobType">
+          ${['CCTV','Access Control','อื่นๆ'].map(t=>`<option ${r.jobType===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>สถานที่</label><input type="text" id="e_location" value="${r.location||''}"/></div>
+    </div>
+    <div class="form-group"><label>รายละเอียด</label><textarea id="e_detail" rows="2">${r.detail||''}</textarea></div>
+    <div class="form-row two-col">
+      <div class="form-group"><label>ผู้แจ้ง</label><input type="text" id="e_reporter" value="${r.reporter||''}"/></div>
+      <div class="form-group"><label>ผู้รับผิดชอบ</label><input type="text" id="e_assignee" value="${r.assignee||''}"/></div>
+    </div>
+    <div class="form-row two-col">
+      <div class="form-group"><label>สถานะ</label>
+        <select id="e_status">
+          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น','ยกเลิก'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>วันที่เสร็จ</label><input type="date" id="e_doneDate" value="${r.doneDate||''}"/></div>
+    </div>
+    <div class="form-group"><label>หมายเหตุ</label><input type="text" id="e_note" value="${r.note||''}"/></div>
+  `;
+  document.getElementById('editModal').style.display = 'block';
+}
+
+async function saveEdit() {
+  if (!editRow) return;
+  let data = { action:'update', sheet: adminSheet, rowIndex: editRow.rowIndex };
+
+  if (adminSheet === 'cctv') {
+    data = { ...data,
+      date     : document.getElementById('e_date').value,
+      camId    : document.getElementById('e_camId').value,
+      zone     : document.getElementById('e_zone').value,
+      issue    : document.getElementById('e_issue').value,
+      actionTxt: document.getElementById('e_action').value,
+      status   : document.getElementById('e_status').value,
+      note     : document.getElementById('e_note').value,
+      image1   : editRow.image1 || '',
+      image2   : editRow.image2 || ''
+    };
+  } else {
+    data = { ...data,
+      date    : document.getElementById('e_date').value,
+      jobNo   : document.getElementById('e_jobNo').value,
+      jobType : document.getElementById('e_jobType').value,
+      location: document.getElementById('e_location').value,
+      detail  : document.getElementById('e_detail').value,
+      reporter: document.getElementById('e_reporter').value,
+      assignee: document.getElementById('e_assignee').value,
+      status  : document.getElementById('e_status').value,
+      doneDate: document.getElementById('e_doneDate').value,
+      note    : document.getElementById('e_note').value
+    };
+  }
+
+  try {
+    await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    closeEditModal();
+    setTimeout(fetchAdminData, 1000);
+  } catch(e) {
+    alert('❌ บันทึกไม่สำเร็จ โปรดลองอีกครั้ง');
+  }
+}
+
+async function deleteRow(rowIndex) {
+  if (!confirm('⚠️ ยืนยันการลบรายการนี้?')) return;
+  const data = { action:'delete', sheet: adminSheet, rowIndex };
+  try {
+    await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    setTimeout(fetchAdminData, 1000);
+  } catch(e) {
+    alert('❌ ลบไม่สำเร็จ โปรดลองอีกครั้ง');
+  }
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+  editRow = null;
+}
+
+// ============================================================
+//  Keyboard Shortcuts
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('imgModal').style.display  = 'none';
+    document.getElementById('editModal').style.display = 'none';
+  }
 });
 
-// ===== โหลดข้อมูลเมื่อเปิดหน้า =====
-fetchRecords();
+// ============================================================
+//  Helpers
+// ============================================================
+function todayStr() { return new Date().toISOString().split('T')[0]; }
 
-// ===== ปุ่มรีเฟรช =====
-refreshBtn.addEventListener('click', fetchRecords);
+// ============================================================
+//  Init
+// ============================================================
+(function init() {
+  // Set today's date defaults
+  document.getElementById('c_date').value = todayStr();
+  document.getElementById('j_date').value = todayStr();
+
+  // Image preview + dropzone setup
+  setupImagePreview('c_image1', 'preview1', 'ph1');
+  setupImagePreview('c_image2', 'preview2', 'ph2');
+  setupDropzone('dropzone1', 'c_image1', 'preview1', 'ph1');
+  setupDropzone('dropzone2', 'c_image2', 'preview2', 'ph2');
+
+  // Load page 1 data on start
+  fetchCctv();
+})();
