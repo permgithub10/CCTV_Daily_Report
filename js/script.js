@@ -651,6 +651,5 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
   setupDropzone('dropzone1', 'c_image1', 'preview1', 'ph1');
   setupDropzone('dropzone2', 'c_image2', 'preview2', 'ph2');
 
-  // Load job data
-  fetchJob();
+  // Load data for dashboard when needed
 })();
