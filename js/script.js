@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwriLo5UZR8IVnp9zfsnXtPAJ-hWiYZWJPrukUC-fmHO-fevGwuEs-k1IV5OJuICcW1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
 
 // ============================================================
 //  State
@@ -651,6 +651,6 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
   setupDropzone('dropzone1', 'c_image1', 'preview1', 'ph1');
   setupDropzone('dropzone2', 'c_image2', 'preview2', 'ph2');
 
-  // Load page 1 data on start
-  fetchCctv();
+  // Load job data
+  fetchJob();
 })();
