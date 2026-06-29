@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwBGQLq8hUDRhMzWnclQ6z9_22PyC46-HLJDllpS9M/dev';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw-vRvRXBhifycePB7MsQtkWKE8UpsBhEIAZLcvMawGSP_L8Nib5QXsb8DBf9-B1a9F/exec';
 
 // ============================================================
 //  State
@@ -648,11 +648,31 @@ function applyRestartText() {
 }
 
 // ============================================================
-//  Date input — dd-mm-yyyy auto-format
+//  Date Picker — กดไอคอนแล้วแสดงปฏิทิน, แสดงผลแบบ dd-mm-yyyy
 // ============================================================
-function setupDateInput(inputId) {
-  const el = document.getElementById(inputId);
-  el.addEventListener('input', e => {
+function openDatePicker() {
+  const picker = document.getElementById('c_date_picker');
+  // ตั้งค่า value ของ picker จาก c_date (dd-mm-yyyy → yyyy-mm-dd)
+  const display = document.getElementById('c_date').value;
+  if (display && display.length === 10) {
+    picker.value = parseDMY(display);
+  }
+  picker.showPicker ? picker.showPicker() : picker.click();
+}
+
+function setupDatePicker() {
+  const picker  = document.getElementById('c_date_picker');
+  const display = document.getElementById('c_date');
+  picker.addEventListener('change', () => {
+    if (picker.value) {
+      // แปลง yyyy-mm-dd → dd-mm-yyyy
+      const [y,m,d] = picker.value.split('-');
+      display.value = `${d}-${m}-${y}`;
+    }
+  });
+  // ยังพิมพ์เองได้ (auto-format)
+  display.removeAttribute('readonly');
+  display.addEventListener('input', e => {
     let v = e.target.value.replace(/\D/g, '');
     if (v.length > 2)  v = v.slice(0,2) + '-' + v.slice(2);
     if (v.length > 5)  v = v.slice(0,5) + '-' + v.slice(5);
@@ -669,12 +689,53 @@ function parseDMY(str) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-// แปลง yyyy-mm-dd → dd-mm-yyyy สำหรับแสดงผล
+// วันนี้แบบ dd-mm-yyyy
 function toDisplayDate() {
   const d = new Date();
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
+// ============================================================
+//  Image Preview — รองรับทั้ง file input และ camera input
+// ============================================================
+function setupImagePreview(inputId, previewId) {
+  document.getElementById(inputId).addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+    // sync ไปยัง input หลัก (ถ้า camera input เป็นตัวที่ถูกใช้)
+  });
+}
+
+// sync camera input → main input เพื่อให้ fileToWebP อ่านได้ตัวเดียว
+function setupCameraSync(camInputId, mainInputId, previewId) {
+  document.getElementById(camInputId).addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // copy file ไปยัง main input
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById(mainInputId).files = dt.files;
+    // แสดง preview
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 
 // ============================================================
@@ -686,18 +747,20 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
 //  Init
 // ============================================================
 (function init() {
-  // Set today's date defaults
+  // วันที่เริ่มต้น
   document.getElementById('c_date').value = toDisplayDate();
   document.getElementById('j_date').value = todayStr();
 
-  // Custom date input (dd-mm-yyyy)
-  setupDateInput('c_date');
+  // Date picker พร้อมพิมพ์เองได้
+  setupDatePicker();
 
-  // Image preview + dropzone setup
-  setupImagePreview('c_image1', 'preview1', 'ph1');
-  setupImagePreview('c_image2', 'preview2', 'ph2');
-  setupDropzone('dropzone1', 'c_image1', 'preview1', 'ph1');
-  setupDropzone('dropzone2', 'c_image2', 'preview2', 'ph2');
+  // Image preview — เลือกจากแกลเลอรี
+  setupImagePreview('c_image1', 'preview1');
+  setupImagePreview('c_image2', 'preview2');
+
+  // Camera sync → main input
+  setupCameraSync('c_image1_cam', 'c_image1', 'preview1');
+  setupCameraSync('c_image2_cam', 'c_image2', 'preview2');
 
   // Load data for dashboard when needed
 })();
