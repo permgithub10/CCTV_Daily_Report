@@ -14,7 +14,7 @@
     <!-- Top Header -->
     <header id="topHeader">
       <div class="header-inner">
-        <span id="headerTitle">📋 รายงานความผิดปกติ CCTV</span>
+        <span id="headerTitle">📋 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน</span>
       </div>
     </header>
 
@@ -31,21 +31,25 @@
             <div class="form-row two-col">
               <div class="form-group">
                 <label>📅 วันที่ <span class="req">*</span></label>
-                <input type="date" id="c_date" required />
+                <input type="text" id="c_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" />
               </div>
               <div class="form-group">
                 <label>🎥 Cam ID <span class="req">*</span></label>
-                <input type="text" id="c_camId" placeholder="เช่น CAM-01" required />
+                <input type="text" id="c_camId" required />
               </div>
             </div>
 
             <div class="form-group">
               <label>📍 โซน/พื้นที่ติดตั้ง <span class="req">*</span></label>
-              <input type="text" id="c_zone" placeholder="เช่น อาคาร A ชั้น 1" required />
+              <input type="text" id="c_zone" required />
             </div>
 
             <div class="form-group">
               <label>⚠️ อาการที่พบ <span class="req">*</span></label>
+              <div class="checkbox-row">
+                <input type="checkbox" id="c_restart" onchange="applyRestartText()" />
+                <label for="c_restart" class="checkbox-label">สั่ง Restart ผ่าน Web UI</label>
+              </div>
               <textarea id="c_issue" rows="3" required placeholder="อธิบายอาการที่พบ..."></textarea>
             </div>
 
@@ -71,7 +75,6 @@
                   <option value="รอดำเนินการ">⏳ รอดำเนินการ</option>
                   <option value="กำลังดำเนินการ">🔄 กำลังดำเนินการ</option>
                   <option value="เสร็จสิ้น">✅ เสร็จสิ้น</option>
-                  <option value="ยกเลิก">❌ ยกเลิก</option>
                 </select>
               </div>
               <div class="form-group">
