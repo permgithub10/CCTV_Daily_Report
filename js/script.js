@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwriLo5UZR8IVnp9zfsnXtPAJ-hWiYZWJPrukUC-fmHO-fevGwuEs-k1IV5OJuICcW1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8OvZ-ZLhr0HeAD7r0AqZEBaIZSv6xcHk757SyEOrvZYp-Vo5aZyLzHQ2shZgq3Knh/exec';
 
 // ============================================================
 //  State
@@ -20,7 +20,7 @@ let isLoggedIn  = false;
 //  Page & Navigation
 // ============================================================
 const pageHeaders = {
-  cctv:      '📷 รายงานความผิดปกติ CCTV',
+  cctv:      '📷 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน',
   job:       '📋 ทะเบียนรับแจ้งงาน',
   dashboard: '📊 Dashboard',
   admin:     '🔐 Admin'
@@ -175,7 +175,7 @@ document.getElementById('cctvForm').addEventListener('submit', async e => {
   const data = {
     action    : 'add',
     sheet     : 'cctv',
-    date      : document.getElementById('c_date').value,
+    date      : parseDMY(document.getElementById('c_date').value),
     camId     : document.getElementById('c_camId').value.trim(),
     zone      : document.getElementById('c_zone').value.trim(),
     issue     : document.getElementById('c_issue').value.trim(),
@@ -200,7 +200,8 @@ document.getElementById('cctvForm').addEventListener('submit', async e => {
 
 function resetCctvForm() {
   document.getElementById('cctvForm').reset();
-  document.getElementById('c_date').value = todayStr();
+  document.getElementById('c_date').value = toDisplayDate();
+  document.getElementById('c_restart').checked = false;
   document.getElementById('preview1').innerHTML = '';
   document.getElementById('preview2').innerHTML = '';
   document.getElementById('ph1').style.display = '';
@@ -633,6 +634,50 @@ document.addEventListener('keydown', e => {
 });
 
 // ============================================================
+//  Checkbox — สั่ง Restart ผ่าน Web UI
+// ============================================================
+function applyRestartText() {
+  const cb    = document.getElementById('c_restart');
+  const issue = document.getElementById('c_issue');
+  const txt   = 'สั่ง Restart ผ่าน Web UI';
+  if (cb.checked) {
+    issue.value = issue.value ? issue.value + '\n' + txt : txt;
+  } else {
+    issue.value = issue.value.replace('\n' + txt, '').replace(txt, '');
+  }
+}
+
+// ============================================================
+//  Date input — dd-mm-yyyy auto-format
+// ============================================================
+function setupDateInput(inputId) {
+  const el = document.getElementById(inputId);
+  el.addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '');
+    if (v.length > 2)  v = v.slice(0,2) + '-' + v.slice(2);
+    if (v.length > 5)  v = v.slice(0,5) + '-' + v.slice(5);
+    if (v.length > 10) v = v.slice(0,10);
+    e.target.value = v;
+  });
+}
+
+// แปลง dd-mm-yyyy → yyyy-mm-dd สำหรับส่ง backend
+function parseDMY(str) {
+  if (!str) return '';
+  const parts = str.split('-');
+  if (parts.length !== 3) return str;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+// แปลง yyyy-mm-dd → dd-mm-yyyy สำหรับแสดงผล
+function toDisplayDate() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
+
+
+// ============================================================
 //  Helpers
 // ============================================================
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -642,8 +687,11 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
 // ============================================================
 (function init() {
   // Set today's date defaults
-  document.getElementById('c_date').value = todayStr();
+  document.getElementById('c_date').value = toDisplayDate();
   document.getElementById('j_date').value = todayStr();
+
+  // Custom date input (dd-mm-yyyy)
+  setupDateInput('c_date');
 
   // Image preview + dropzone setup
   setupImagePreview('c_image1', 'preview1', 'ph1');
