@@ -14,7 +14,7 @@
     <!-- Top Header -->
     <header id="topHeader">
       <div class="header-inner">
-        <span id="headerTitle">📋 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน</span>
+        <span id="headerTitle">📷 แบบบันทึกความผิดปกติ CCTV</span>
       </div>
     </header>
 
@@ -32,7 +32,7 @@
               <div class="form-group">
                 <label>📅 วันที่ <span class="req">*</span></label>
                 <div class="date-wrapper">
-                  <input type="text" id="c_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" readonly />
+                  <input type="text" id="c_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" readonly style="cursor:pointer;" onclick="openDatePicker()" />
                   <input type="date" id="c_date_picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
                   <span class="date-cal-icon" onclick="openDatePicker()">📅</span>
                 </div>
@@ -51,17 +51,16 @@
             <div class="form-group">
               <label>⚠️ อาการที่พบ <span class="req">*</span></label>
               <div class="checkbox-row">
-                <input type="checkbox" id="c_restart" onchange="applyRestartText()" />
-                <label for="c_restart" class="checkbox-label">สั่ง Restart ผ่าน Web UI</label>
+                <input type="checkbox" id="c_novideo" onchange="applyNoVideoText()" />
+                <label for="c_novideo" class="checkbox-label">No Video</label>
               </div>
               <textarea id="c_issue" rows="3" required placeholder="อธิบายอาการที่พบ..."></textarea>
             </div>
 
             <div class="form-group">
               <label>🖼️ รูปภาพ — อาการที่พบ</label>
-              <!-- hidden inputs -->
-              <input type="file" id="c_image1"      accept="image/*"        hidden />
-              <input type="file" id="c_image1_cam"  accept="image/*" capture="environment" hidden />
+              <input type="file" id="c_image1"     accept="image/*"                   hidden />
+              <input type="file" id="c_image1_cam" accept="image/*" capture="environment" hidden />
               <div class="upload-btn-row">
                 <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image1').click()">🖼️ เลือกรูป</button>
                 <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image1_cam').click()">📷 เปิดกล้อง</button>
@@ -71,6 +70,10 @@
 
             <div class="form-group">
               <label>🔧 การดำเนินการแก้ไข <span class="req">*</span></label>
+              <div class="checkbox-row">
+                <input type="checkbox" id="c_restart" onchange="applyRestartText()" />
+                <label for="c_restart" class="checkbox-label">สั่ง Restart ผ่าน Web UI</label>
+              </div>
               <textarea id="c_action" rows="3" required placeholder="อธิบายการแก้ไข..."></textarea>
             </div>
 
