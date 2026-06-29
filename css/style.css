@@ -237,6 +237,49 @@ body {
 }
 
 
+/* ---- Date wrapper with calendar icon ---- */
+.date-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.date-wrapper input[type="text"] {
+  padding-right: 40px;
+  width: 100%;
+}
+.date-cal-icon {
+  position: absolute;
+  right: 10px;
+  font-size: 20px;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+}
+
+/* ---- Upload buttons row ---- */
+.upload-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.btn-upload {
+  flex: 1;
+  padding: 10px;
+  background: #f0f6ff;
+  border: 1.5px dashed #90b8e8;
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-upload:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
 .file-upload-area {
   border: 2px dashed #b8cfe8;
   border-radius: 10px;
