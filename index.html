@@ -31,7 +31,11 @@
             <div class="form-row two-col">
               <div class="form-group">
                 <label>📅 วันที่ <span class="req">*</span></label>
-                <input type="text" id="c_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" />
+                <div class="date-wrapper">
+                  <input type="text" id="c_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" readonly />
+                  <input type="date" id="c_date_picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+                  <span class="date-cal-icon" onclick="openDatePicker()">📅</span>
+                </div>
               </div>
               <div class="form-group">
                 <label>🎥 Cam ID <span class="req">*</span></label>
@@ -55,11 +59,14 @@
 
             <div class="form-group">
               <label>🖼️ รูปภาพ — อาการที่พบ</label>
-              <div class="file-upload-area" id="dropzone1" onclick="document.getElementById('c_image1').click()">
-                <input type="file" id="c_image1" accept="image/*" hidden />
-                <div class="file-upload-placeholder" id="ph1">📷 คลิกหรือลากรูปมาวางที่นี่</div>
-                <div class="preview-container" id="preview1"></div>
+              <!-- hidden inputs -->
+              <input type="file" id="c_image1"      accept="image/*"        hidden />
+              <input type="file" id="c_image1_cam"  accept="image/*" capture="environment" hidden />
+              <div class="upload-btn-row">
+                <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image1').click()">🖼️ เลือกรูป</button>
+                <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image1_cam').click()">📷 เปิดกล้อง</button>
               </div>
+              <div class="preview-container" id="preview1"></div>
             </div>
 
             <div class="form-group">
@@ -85,11 +92,14 @@
 
             <div class="form-group">
               <label>🖼️ รูปภาพ — หลังแก้ไข</label>
-              <div class="file-upload-area" id="dropzone2" onclick="document.getElementById('c_image2').click()">
-                <input type="file" id="c_image2" accept="image/*" hidden />
-                <div class="file-upload-placeholder" id="ph2">📷 คลิกหรือลากรูปมาวางที่นี่</div>
-                <div class="preview-container" id="preview2"></div>
+              <!-- hidden inputs -->
+              <input type="file" id="c_image2"      accept="image/*"        hidden />
+              <input type="file" id="c_image2_cam"  accept="image/*" capture="environment" hidden />
+              <div class="upload-btn-row">
+                <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image2').click()">🖼️ เลือกรูป</button>
+                <button type="button" class="btn btn-upload" onclick="document.getElementById('c_image2_cam').click()">📷 เปิดกล้อง</button>
               </div>
+              <div class="preview-container" id="preview2"></div>
             </div>
 
             <div class="form-actions">
