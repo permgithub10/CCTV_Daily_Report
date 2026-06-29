@@ -20,7 +20,7 @@ let isLoggedIn  = false;
 //  Page & Navigation
 // ============================================================
 const pageHeaders = {
-  cctv:      '📷 แบบบันทึกรายงานความผิดปกติของกล้องวงจรปิดประจำวัน',
+  cctv:      '📷 แบบบันทึกความผิดปกติ CCTV',
   job:       '📋 ทะเบียนรับแจ้งงาน',
   dashboard: '📊 Dashboard',
   admin:     '🔐 Admin'
@@ -201,11 +201,10 @@ document.getElementById('cctvForm').addEventListener('submit', async e => {
 function resetCctvForm() {
   document.getElementById('cctvForm').reset();
   document.getElementById('c_date').value = toDisplayDate();
-  document.getElementById('c_restart').checked = false;
+  document.getElementById('c_novideo').checked  = false;
+  document.getElementById('c_restart').checked  = false;
   document.getElementById('preview1').innerHTML = '';
   document.getElementById('preview2').innerHTML = '';
-  document.getElementById('ph1').style.display = '';
-  document.getElementById('ph2').style.display = '';
 }
 
 // ============================================================
@@ -634,16 +633,30 @@ document.addEventListener('keydown', e => {
 });
 
 // ============================================================
-//  Checkbox — สั่ง Restart ผ่าน Web UI
+//  Checkbox — No Video (อาการที่พบ)
+// ============================================================
+function applyNoVideoText() {
+  const cb    = document.getElementById('c_novideo');
+  const issue = document.getElementById('c_issue');
+  const txt   = 'No Video';
+  if (cb.checked) {
+    issue.value = issue.value ? issue.value + (issue.value.endsWith('\n') ? '' : '\n') + txt : txt;
+  } else {
+    issue.value = issue.value.replace('\n' + txt, '').replace(txt, '').trim();
+  }
+}
+
+// ============================================================
+//  Checkbox — สั่ง Restart ผ่าน Web UI (การดำเนินการแก้ไข)
 // ============================================================
 function applyRestartText() {
-  const cb    = document.getElementById('c_restart');
-  const issue = document.getElementById('c_issue');
-  const txt   = 'สั่ง Restart ผ่าน Web UI';
+  const cb     = document.getElementById('c_restart');
+  const action = document.getElementById('c_action');
+  const txt    = 'สั่ง Restart ผ่าน Web UI';
   if (cb.checked) {
-    issue.value = issue.value ? issue.value + '\n' + txt : txt;
+    action.value = action.value ? action.value + (action.value.endsWith('\n') ? '' : '\n') + txt : txt;
   } else {
-    issue.value = issue.value.replace('\n' + txt, '').replace(txt, '');
+    action.value = action.value.replace('\n' + txt, '').replace(txt, '').trim();
   }
 }
 
@@ -663,21 +676,19 @@ function openDatePicker() {
 function setupDatePicker() {
   const picker  = document.getElementById('c_date_picker');
   const display = document.getElementById('c_date');
+
+  // sync ค่าปัจจุบันจาก display → picker ทุกครั้งที่เปิด
+  picker.addEventListener('focus', () => {
+    if (display.value && display.value.length === 10) {
+      picker.value = parseDMY(display.value);
+    }
+  });
+
   picker.addEventListener('change', () => {
     if (picker.value) {
-      // แปลง yyyy-mm-dd → dd-mm-yyyy
       const [y,m,d] = picker.value.split('-');
       display.value = `${d}-${m}-${y}`;
     }
-  });
-  // ยังพิมพ์เองได้ (auto-format)
-  display.removeAttribute('readonly');
-  display.addEventListener('input', e => {
-    let v = e.target.value.replace(/\D/g, '');
-    if (v.length > 2)  v = v.slice(0,2) + '-' + v.slice(2);
-    if (v.length > 5)  v = v.slice(0,5) + '-' + v.slice(5);
-    if (v.length > 10) v = v.slice(0,10);
-    e.target.value = v;
   });
 }
 
