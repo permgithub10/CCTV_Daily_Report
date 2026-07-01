@@ -88,6 +88,17 @@
                 </select>
               </div>
               <div class="form-group">
+                <label>📅 วันที่เสร็จ</label>
+                <div class="date-wrapper">
+                  <input type="text" id="c_doneDate" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly style="cursor:pointer;" onclick="openPicker('c_doneDate','c_doneDate_picker')" />
+                  <input type="date" id="c_doneDate_picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+                  <span class="date-cal-icon" onclick="openPicker('c_doneDate','c_doneDate_picker')">📅</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row two-col">
+              <div class="form-group">
                 <label>📝 หมายเหตุ</label>
                 <input type="text" id="c_note" placeholder="(ถ้ามี)" />
               </div>
@@ -126,9 +137,9 @@
               <div class="form-group">
                 <label>📅 วันที่ <span class="req">*</span></label>
                 <div class="date-wrapper">
-                  <input type="text" id="j_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" readonly style="cursor:pointer;" onclick="openJobDatePicker('j_date','j_date_picker')" />
+                  <input type="text" id="j_date" placeholder="วว-ดด-ปปปป" maxlength="10" required autocomplete="off" readonly style="cursor:pointer;" onclick="openPicker('j_date','j_date_picker')" />
                   <input type="date" id="j_date_picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
-                  <span class="date-cal-icon" onclick="openJobDatePicker('j_date','j_date_picker')">📅</span>
+                  <span class="date-cal-icon" onclick="openPicker('j_date','j_date_picker')">📅</span>
                 </div>
               </div>
               <div class="form-group">
@@ -187,9 +198,9 @@
               <div class="form-group">
                 <label>📅 วันที่เสร็จ</label>
                 <div class="date-wrapper">
-                  <input type="text" id="j_doneDate" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly style="cursor:pointer;" onclick="openJobDatePicker('j_doneDate','j_doneDate_picker')" />
+                  <input type="text" id="j_doneDate" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly style="cursor:pointer;" onclick="openPicker('j_doneDate','j_doneDate_picker')" />
                   <input type="date" id="j_doneDate_picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
-                  <span class="date-cal-icon" onclick="openJobDatePicker('j_doneDate','j_doneDate_picker')">📅</span>
+                  <span class="date-cal-icon" onclick="openPicker('j_doneDate','j_doneDate_picker')">📅</span>
                 </div>
               </div>
             </div>
