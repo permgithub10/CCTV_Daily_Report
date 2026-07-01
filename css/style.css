@@ -237,21 +237,42 @@ body {
 }
 
 
+/* ---- Edit Modal image ---- */
+.edit-img-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.edit-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.edit-thumb:hover { transform: scale(1.08); }
+
 /* ---- Date wrapper with calendar icon ---- */
 .date-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 .date-wrapper input[type="text"] {
   padding-right: 40px;
   width: 100%;
+  cursor: pointer;
+  user-select: none;
 }
 .date-cal-icon {
   position: absolute;
   right: 10px;
   font-size: 20px;
-  cursor: pointer;
+  pointer-events: none;
   user-select: none;
   line-height: 1;
 }
