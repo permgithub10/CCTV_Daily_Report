@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw-vRvRXBhifycePB7MsQtkWKE8UpsBhEIAZLcvMawGSP_L8Nib5QXsb8DBf9-B1a9F/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzmolhDS5xX8Y7NyuO8sIQhRbyG45n4GvT3JPY1SYVJGdlFXere7SSqgs3SyIKSLOg8/exec';
 
 // ============================================================
 //  State
@@ -210,19 +210,36 @@ function resetCctvForm() {
 // ============================================================
 //  PAGE 2 — Job Request
 // ============================================================
+
+// Date picker generic สำหรับ job (ใช้ได้กับ j_date และ j_doneDate)
+function openJobDatePicker(displayId, pickerId) {
+  const picker  = document.getElementById(pickerId);
+  const display = document.getElementById(displayId).value;
+  if (display && display.length === 10) picker.value = parseDMY(display);
+  picker.showPicker ? picker.showPicker() : picker.click();
+}
+
+function setupJobDatePicker(displayId, pickerId) {
+  const picker  = document.getElementById(pickerId);
+  const display = document.getElementById(displayId);
+  picker.addEventListener('change', () => {
+    if (picker.value) {
+      const [y,m,d] = picker.value.split('-');
+      display.value = `${d}-${m}-${y}`;
+    }
+  });
+}
+
 async function fetchJob() {
-  document.getElementById('jobBody').innerHTML = `<tr><td colspan="11" class="tbl-loading">⏳ กำลังโหลด...</td></tr>`;
   try {
     const res = await fetch(`${API_URL}?action=list&sheet=job`);
     jobData   = await res.json();
-    renderJobTable(jobData);
-  } catch(e) {
-    document.getElementById('jobBody').innerHTML = `<tr><td colspan="11" class="tbl-loading" style="color:#991b1b">❌ โหลดข้อมูลไม่สำเร็จ</td></tr>`;
-  }
+  } catch(e) {}
 }
 
 function renderJobTable(data) {
   const tbody = document.getElementById('jobBody');
+  if (!tbody) return;
   if (!data || !data.length) {
     tbody.innerHTML = `<tr><td colspan="11" class="tbl-loading">📭 ยังไม่มีข้อมูล</td></tr>`;
     return;
@@ -235,8 +252,8 @@ function renderJobTable(data) {
       <td><span class="badge badge-${(r.jobType||'').replace(/\s/g,'')}">${r.jobType||'-'}</span></td>
       <td>${r.location||'-'}</td>
       <td>${r.detail||'-'}</td>
-      <td>${r.reporter||'-'}</td>
-      <td>${r.assignee||'-'}</td>
+      <td>${thumbImg(r.image||'')}</td>
+      <td>${r.actionTxt||'-'}</td>
       <td>${statusBadge(r.status)}</td>
       <td style="white-space:nowrap">${formatDate(r.doneDate)}</td>
       <td>${r.note||'-'}</td>
@@ -245,32 +262,43 @@ function renderJobTable(data) {
 
 document.getElementById('jobForm').addEventListener('submit', async e => {
   e.preventDefault();
+
+  const imageFile    = document.getElementById('j_image').files[0]
+                    || document.getElementById('j_image_cam').files[0];
+  const imageBase64  = await fileToWebP(imageFile);
+
   const data = {
-    action   : 'add',
-    sheet    : 'job',
-    date     : document.getElementById('j_date').value,
-    jobNo    : document.getElementById('j_jobNo').value.trim(),
-    jobType  : document.getElementById('j_jobType').value,
-    location : document.getElementById('j_location').value.trim(),
-    detail   : document.getElementById('j_detail').value.trim(),
-    reporter : document.getElementById('j_reporter').value.trim(),
-    assignee : document.getElementById('j_assignee').value.trim(),
-    status   : document.getElementById('j_status').value,
-    doneDate : document.getElementById('j_doneDate').value,
-    note     : document.getElementById('j_note').value.trim()
+    action    : 'add',
+    sheet     : 'job',
+    date      : parseDMY(document.getElementById('j_date').value),
+    jobNo     : document.getElementById('j_jobNo').value.trim(),
+    jobType   : document.getElementById('j_jobType').value,
+    location  : document.getElementById('j_location').value.trim(),
+    detail    : document.getElementById('j_detail').value.trim(),
+    image     : imageBase64 || '',
+    actionTxt : document.getElementById('j_action').value.trim(),
+    status    : document.getElementById('j_status').value,
+    doneDate  : parseDMY(document.getElementById('j_doneDate').value),
+    note      : document.getElementById('j_note').value.trim()
   };
 
   showMsg('jobMsg','⏳ กำลังบันทึก...','loading');
   try {
     await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
     showMsg('jobMsg','✅ บันทึกสำเร็จ!','success');
-    document.getElementById('jobForm').reset();
-    document.getElementById('j_date').value = todayStr();
-    setTimeout(fetchJob, 1500);
+    resetJobForm();
   } catch(err) {
     showMsg('jobMsg','❌ เกิดข้อผิดพลาด โปรดลองอีกครั้ง','error');
   }
 });
+
+function resetJobForm() {
+  document.getElementById('jobForm').reset();
+  document.getElementById('j_date').value     = toDisplayDate();
+  document.getElementById('j_doneDate').value = '';
+  document.getElementById('j_preview').innerHTML = '';
+}
+
 
 // ============================================================
 //  PAGE 3 — Dashboard
@@ -760,18 +788,24 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
 (function init() {
   // วันที่เริ่มต้น
   document.getElementById('c_date').value = toDisplayDate();
-  document.getElementById('j_date').value = todayStr();
+  document.getElementById('j_date').value = toDisplayDate();
 
-  // Date picker พร้อมพิมพ์เองได้
+  // Date pickers — CCTV
   setupDatePicker();
 
-  // Image preview — เลือกจากแกลเลอรี
+  // Date pickers — Job
+  setupJobDatePicker('j_date', 'j_date_picker');
+  setupJobDatePicker('j_doneDate', 'j_doneDate_picker');
+
+  // Image preview — CCTV
   setupImagePreview('c_image1', 'preview1');
   setupImagePreview('c_image2', 'preview2');
-
-  // Camera sync → main input
   setupCameraSync('c_image1_cam', 'c_image1', 'preview1');
   setupCameraSync('c_image2_cam', 'c_image2', 'preview2');
+
+  // Image preview — Job
+  setupImagePreview('j_image', 'j_preview');
+  setupCameraSync('j_image_cam', 'j_image', 'j_preview');
 
   // Load data for dashboard when needed
 })();
