@@ -2,7 +2,7 @@
 //  CCTV System - Frontend Logic v2.0
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbzmolhDS5xX8Y7NyuO8sIQhRbyG45n4GvT3JPY1SYVJGdlFXere7SSqgs3SyIKSLOg8/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwECiw7SMeHkqRzSpmF_183Rq-IOcgMM9g7rdebSws4iZeiSFPxYOH-DOLR_JpEytqT/exec';
 
 // ============================================================
 //  State
@@ -181,6 +181,7 @@ document.getElementById('cctvForm').addEventListener('submit', async e => {
     issue     : document.getElementById('c_issue').value.trim(),
     actionTxt : document.getElementById('c_action').value.trim(),
     status    : document.getElementById('c_status').value,
+    doneDate  : parseDMY(document.getElementById('c_doneDate').value),
     note      : document.getElementById('c_note').value.trim()
   };
 
@@ -200,9 +201,10 @@ document.getElementById('cctvForm').addEventListener('submit', async e => {
 
 function resetCctvForm() {
   document.getElementById('cctvForm').reset();
-  document.getElementById('c_date').value = toDisplayDate();
-  document.getElementById('c_novideo').checked  = false;
-  document.getElementById('c_restart').checked  = false;
+  document.getElementById('c_date').value     = toDisplayDate();
+  document.getElementById('c_doneDate').value = '';
+  document.getElementById('c_novideo').checked = false;
+  document.getElementById('c_restart').checked = false;
   document.getElementById('preview1').innerHTML = '';
   document.getElementById('preview2').innerHTML = '';
 }
@@ -689,29 +691,22 @@ function applyRestartText() {
 }
 
 // ============================================================
-//  Date Picker — กดไอคอนแล้วแสดงปฏิทิน, แสดงผลแบบ dd-mm-yyyy
+//  Date Picker — Generic (ใช้ได้กับทุกช่อง)
+//  openPicker(displayId, pickerId) — เรียกเปิดปฏิทิน
+//  setupPicker(displayId, pickerId) — ผูก event listener
 // ============================================================
-function openDatePicker() {
-  const picker = document.getElementById('c_date_picker');
-  // ตั้งค่า value ของ picker จาก c_date (dd-mm-yyyy → yyyy-mm-dd)
-  const display = document.getElementById('c_date').value;
+function openPicker(displayId, pickerId) {
+  const picker  = document.getElementById(pickerId);
+  const display = document.getElementById(displayId).value;
   if (display && display.length === 10) {
     picker.value = parseDMY(display);
   }
-  picker.showPicker ? picker.showPicker() : picker.click();
+  try { picker.showPicker(); } catch(e) { picker.click(); }
 }
 
-function setupDatePicker() {
-  const picker  = document.getElementById('c_date_picker');
-  const display = document.getElementById('c_date');
-
-  // sync ค่าปัจจุบันจาก display → picker ทุกครั้งที่เปิด
-  picker.addEventListener('focus', () => {
-    if (display.value && display.value.length === 10) {
-      picker.value = parseDMY(display.value);
-    }
-  });
-
+function setupPicker(displayId, pickerId) {
+  const picker  = document.getElementById(pickerId);
+  const display = document.getElementById(displayId);
   picker.addEventListener('change', () => {
     if (picker.value) {
       const [y,m,d] = picker.value.split('-');
@@ -719,6 +714,13 @@ function setupDatePicker() {
     }
   });
 }
+
+// aliases เดิม (backward compat)
+function openDatePicker()                      { openPicker('c_date','c_date_picker'); }
+function setupDatePicker()                     { setupPicker('c_date','c_date_picker'); }
+function openJobDatePicker(dId, pId)           { openPicker(dId, pId); }
+function setupJobDatePicker(dId, pId)          { setupPicker(dId, pId); }
+
 
 // แปลง dd-mm-yyyy → yyyy-mm-dd สำหรับส่ง backend
 function parseDMY(str) {
@@ -791,11 +793,12 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
   document.getElementById('j_date').value = toDisplayDate();
 
   // Date pickers — CCTV
-  setupDatePicker();
+  setupPicker('c_date',     'c_date_picker');
+  setupPicker('c_doneDate', 'c_doneDate_picker');
 
   // Date pickers — Job
-  setupJobDatePicker('j_date', 'j_date_picker');
-  setupJobDatePicker('j_doneDate', 'j_doneDate_picker');
+  setupPicker('j_date',     'j_date_picker');
+  setupPicker('j_doneDate', 'j_doneDate_picker');
 
   // Image preview — CCTV
   setupImagePreview('c_image1', 'preview1');
