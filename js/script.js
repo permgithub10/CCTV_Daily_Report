@@ -538,101 +538,298 @@ function renderAdminJob(data) {
 // ---- Edit CCTV ----
 function openEditCctv(idx) {
   const r = cctvData[idx];
-  editRow = r;
-  document.getElementById('editModalTitle').textContent = `✏️ แก้ไข CCTV — ${r.camId}`;
+  editRow = { ...r };   // เก็บ reference ปัจจุบัน (image URLs อาจถูก override)
+
+  document.getElementById('editModalTitle').textContent = `✏️ แก้ไข CCTV — ${r.camId || ''}`;
   document.getElementById('editModalBody').innerHTML = `
+
     <div class="form-row two-col">
-      <div class="form-group"><label>วันที่</label><input type="date" id="e_date" value="${r.date||''}"/></div>
-      <div class="form-group"><label>Cam ID</label><input type="text" id="e_camId" value="${r.camId||''}"/></div>
+      <div class="form-group">
+        <label>📅 วันที่</label>
+        <div class="date-wrapper">
+          <input type="text" id="e_date" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly
+            style="cursor:pointer;" value="${formatDate(r.date)||''}"
+            onclick="openPicker('e_date','e_date_p')" />
+          <input type="date" id="e_date_p" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+          <span class="date-cal-icon" onclick="openPicker('e_date','e_date_p')">📅</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🎥 Cam ID</label>
+        <input type="text" id="e_camId" value="${r.camId||''}" />
+      </div>
     </div>
-    <div class="form-group"><label>โซน/พื้นที่</label><input type="text" id="e_zone" value="${r.zone||''}"/></div>
-    <div class="form-group"><label>อาการที่พบ</label><textarea id="e_issue" rows="2">${r.issue||''}</textarea></div>
-    <div class="form-group"><label>การดำเนินการ</label><textarea id="e_action" rows="2">${r.action||''}</textarea></div>
+
+    <div class="form-group">
+      <label>📍 โซน/พื้นที่ติดตั้ง</label>
+      <input type="text" id="e_zone" value="${r.zone||''}" />
+    </div>
+
+    <div class="form-group">
+      <label>⚠️ อาการที่พบ</label>
+      <textarea id="e_issue" rows="3">${r.issue||''}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label>🖼️ รูปภาพ — อาการที่พบ</label>
+      ${r.image1
+        ? `<div class="edit-img-wrap">
+             <img src="${r.image1}" class="edit-thumb" onclick="openImgModal('${r.image1}')" />
+             <button type="button" class="btn btn-sm btn-del" onclick="clearEditImg('e_img1_preview','e_img1','e_img1_cam','img1')">🗑️ ลบรูป</button>
+           </div>`
+        : ''}
+      <div id="e_img1_preview" class="preview-container" style="margin-top:6px"></div>
+      <input type="file" id="e_img1"     accept="image/*"                    hidden />
+      <input type="file" id="e_img1_cam" accept="image/*" capture="environment" hidden />
+      <div class="upload-btn-row" style="margin-top:8px">
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_img1').click()">🖼️ เปลี่ยนรูป</button>
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_img1_cam').click()">📷 ถ่ายใหม่</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>🔧 การดำเนินการแก้ไข</label>
+      <textarea id="e_action" rows="3">${r.action||''}</textarea>
+    </div>
+
     <div class="form-row two-col">
-      <div class="form-group"><label>สถานะ</label>
+      <div class="form-group">
+        <label>📊 สถานะ</label>
         <select id="e_status">
-          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น','ยกเลิก'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น'].map(s =>
+            `<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group"><label>หมายเหตุ</label><input type="text" id="e_note" value="${r.note||''}"/></div>
+      <div class="form-group">
+        <label>📅 วันที่เสร็จ</label>
+        <div class="date-wrapper">
+          <input type="text" id="e_doneDate" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly
+            style="cursor:pointer;" value="${formatDate(r.doneDate)||''}"
+            onclick="openPicker('e_doneDate','e_doneDate_p')" />
+          <input type="date" id="e_doneDate_p" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+          <span class="date-cal-icon" onclick="openPicker('e_doneDate','e_doneDate_p')">📅</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>🖼️ รูปภาพ — หลังแก้ไข</label>
+      ${r.image2
+        ? `<div class="edit-img-wrap">
+             <img src="${r.image2}" class="edit-thumb" onclick="openImgModal('${r.image2}')" />
+             <button type="button" class="btn btn-sm btn-del" onclick="clearEditImg('e_img2_preview','e_img2','e_img2_cam','img2')">🗑️ ลบรูป</button>
+           </div>`
+        : ''}
+      <div id="e_img2_preview" class="preview-container" style="margin-top:6px"></div>
+      <input type="file" id="e_img2"     accept="image/*"                    hidden />
+      <input type="file" id="e_img2_cam" accept="image/*" capture="environment" hidden />
+      <div class="upload-btn-row" style="margin-top:8px">
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_img2').click()">🖼️ เปลี่ยนรูป</button>
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_img2_cam').click()">📷 ถ่ายใหม่</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>📝 หมายเหตุ</label>
+      <input type="text" id="e_note" value="${r.note||''}" />
     </div>
   `;
+
+  // setup date pickers ใน modal
+  setupPicker('e_date',     'e_date_p');
+  setupPicker('e_doneDate', 'e_doneDate_p');
+
+  // setup image preview
+  setupEditImgPreview('e_img1',     'e_img1_preview', 'img1');
+  setupEditImgPreview('e_img1_cam', 'e_img1_preview', 'img1');
+  setupEditImgPreview('e_img2',     'e_img2_preview', 'img2');
+  setupEditImgPreview('e_img2_cam', 'e_img2_preview', 'img2');
+
   document.getElementById('editModal').style.display = 'block';
 }
 
 // ---- Edit Job ----
 function openEditJob(idx) {
   const r = jobData[idx];
-  editRow = r;
-  document.getElementById('editModalTitle').textContent = `✏️ แก้ไขงาน — ${r.jobNo}`;
+  editRow = { ...r };
+
+  document.getElementById('editModalTitle').textContent = `✏️ แก้ไขงาน — ${r.jobNo || ''}`;
   document.getElementById('editModalBody').innerHTML = `
+
     <div class="form-row two-col">
-      <div class="form-group"><label>วันที่รับแจ้ง</label><input type="date" id="e_date" value="${r.date||''}"/></div>
-      <div class="form-group"><label>เลขที่ใบแจ้ง</label><input type="text" id="e_jobNo" value="${r.jobNo||''}"/></div>
+      <div class="form-group">
+        <label>📅 วันที่</label>
+        <div class="date-wrapper">
+          <input type="text" id="e_date" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly
+            style="cursor:pointer;" value="${formatDate(r.date)||''}"
+            onclick="openPicker('e_date','e_date_p')" />
+          <input type="date" id="e_date_p" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+          <span class="date-cal-icon" onclick="openPicker('e_date','e_date_p')">📅</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🔖 เลขที่ใบแจ้ง</label>
+        <input type="text" id="e_jobNo" value="${r.jobNo||''}" />
+      </div>
     </div>
+
     <div class="form-row two-col">
-      <div class="form-group"><label>ประเภทงาน</label>
+      <div class="form-group">
+        <label>🏷️ ประเภทงาน</label>
         <select id="e_jobType">
-          ${['CCTV','Access Control','อื่นๆ'].map(t=>`<option ${r.jobType===t?'selected':''}>${t}</option>`).join('')}
+          ${['CCTV','Access Control','อื่นๆ'].map(t =>
+            `<option ${r.jobType===t?'selected':''}>${t}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group"><label>สถานที่</label><input type="text" id="e_location" value="${r.location||''}"/></div>
+      <div class="form-group">
+        <label>📍 สถานที่</label>
+        <input type="text" id="e_location" value="${r.location||''}" />
+      </div>
     </div>
-    <div class="form-group"><label>รายละเอียด</label><textarea id="e_detail" rows="2">${r.detail||''}</textarea></div>
-    <div class="form-row two-col">
-      <div class="form-group"><label>ผู้แจ้ง</label><input type="text" id="e_reporter" value="${r.reporter||''}"/></div>
-      <div class="form-group"><label>ผู้รับผิดชอบ</label><input type="text" id="e_assignee" value="${r.assignee||''}"/></div>
+
+    <div class="form-group">
+      <label>📄 รายละเอียด</label>
+      <textarea id="e_detail" rows="3">${r.detail||''}</textarea>
     </div>
+
+    <div class="form-group">
+      <label>🖼️ รูปภาพ</label>
+      ${r.image
+        ? `<div class="edit-img-wrap">
+             <img src="${r.image}" class="edit-thumb" onclick="openImgModal('${r.image}')" />
+             <button type="button" class="btn btn-sm btn-del" onclick="clearEditImg('e_jimg_preview','e_jimg','e_jimg_cam','jimg')">🗑️ ลบรูป</button>
+           </div>`
+        : ''}
+      <div id="e_jimg_preview" class="preview-container" style="margin-top:6px"></div>
+      <input type="file" id="e_jimg"     accept="image/*"                    hidden />
+      <input type="file" id="e_jimg_cam" accept="image/*" capture="environment" hidden />
+      <div class="upload-btn-row" style="margin-top:8px">
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_jimg').click()">🖼️ เปลี่ยนรูป</button>
+        <button type="button" class="btn btn-upload" onclick="document.getElementById('e_jimg_cam').click()">📷 ถ่ายใหม่</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>🔧 การดำเนินการแก้ไข</label>
+      <textarea id="e_actionTxt" rows="3">${r.actionTxt||''}</textarea>
+    </div>
+
     <div class="form-row two-col">
-      <div class="form-group"><label>สถานะ</label>
+      <div class="form-group">
+        <label>📊 สถานะ</label>
         <select id="e_status">
-          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น','ยกเลิก'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+          ${['รอดำเนินการ','กำลังดำเนินการ','เสร็จสิ้น'].map(s =>
+            `<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
-      <div class="form-group"><label>วันที่เสร็จ</label><input type="date" id="e_doneDate" value="${r.doneDate||''}"/></div>
+      <div class="form-group">
+        <label>📅 วันที่เสร็จ</label>
+        <div class="date-wrapper">
+          <input type="text" id="e_doneDate" placeholder="วว-ดด-ปปปป" maxlength="10" autocomplete="off" readonly
+            style="cursor:pointer;" value="${formatDate(r.doneDate)||''}"
+            onclick="openPicker('e_doneDate','e_doneDate_p')" />
+          <input type="date" id="e_doneDate_p" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" />
+          <span class="date-cal-icon" onclick="openPicker('e_doneDate','e_doneDate_p')">📅</span>
+        </div>
+      </div>
     </div>
-    <div class="form-group"><label>หมายเหตุ</label><input type="text" id="e_note" value="${r.note||''}"/></div>
+
+    <div class="form-group">
+      <label>📝 หมายเหตุ</label>
+      <input type="text" id="e_note" value="${r.note||''}" />
+    </div>
   `;
+
+  setupPicker('e_date',     'e_date_p');
+  setupPicker('e_doneDate', 'e_doneDate_p');
+  setupEditImgPreview('e_jimg',     'e_jimg_preview', 'jimg');
+  setupEditImgPreview('e_jimg_cam', 'e_jimg_preview', 'jimg');
+
   document.getElementById('editModal').style.display = 'block';
+}
+
+// ---- helper: setup preview ภายใน modal ----
+function setupEditImgPreview(inputId, previewId, storeKey) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      preview.appendChild(img);
+      // เก็บ base64 ใน editRow เพื่อส่ง backend
+      editRow[`_new_${storeKey}`] = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ---- helper: ลบรูปออกจาก modal ----
+function clearEditImg(previewId, inputId, camInputId, storeKey) {
+  document.getElementById(previewId).innerHTML = '';
+  document.getElementById(inputId).value       = '';
+  if (document.getElementById(camInputId)) document.getElementById(camInputId).value = '';
+  editRow[`_new_${storeKey}`] = '';   // flag ว่าให้ลบ
+  // ซ่อน existing thumb
+  const wrap = document.getElementById(previewId)?.closest('.form-group')?.querySelector('.edit-img-wrap');
+  if (wrap) wrap.style.display = 'none';
 }
 
 async function saveEdit() {
   if (!editRow) return;
+
+  // กดบันทึก — แสดง loading state ใน footer
+  const saveBtn = document.querySelector('#editModal .modal-footer .btn-primary');
+  if (saveBtn) { saveBtn.textContent = '⏳ กำลังบันทึก...'; saveBtn.disabled = true; }
+
   let data = { action:'update', sheet: adminSheet, rowIndex: editRow.rowIndex };
 
   if (adminSheet === 'cctv') {
+    // รูป — ถ้ามี _new ให้อัปโหลด, ถ้าเป็น '' ให้ลบ, ถ้าไม่มีให้คงเดิม
+    const img1 = '_new_img1' in editRow ? editRow._new_img1 : editRow.image1;
+    const img2 = '_new_img2' in editRow ? editRow._new_img2 : editRow.image2;
+
     data = { ...data,
-      date     : document.getElementById('e_date').value,
+      date     : parseDMY(document.getElementById('e_date').value),
       camId    : document.getElementById('e_camId').value,
       zone     : document.getElementById('e_zone').value,
       issue    : document.getElementById('e_issue').value,
       actionTxt: document.getElementById('e_action').value,
       status   : document.getElementById('e_status').value,
+      doneDate : parseDMY(document.getElementById('e_doneDate').value),
       note     : document.getElementById('e_note').value,
-      image1   : editRow.image1 || '',
-      image2   : editRow.image2 || ''
+      image1   : img1 || '',
+      image2   : img2 || ''
     };
   } else {
+    const img = '_new_jimg' in editRow ? editRow._new_jimg : editRow.image;
+
     data = { ...data,
-      date    : document.getElementById('e_date').value,
-      jobNo   : document.getElementById('e_jobNo').value,
-      jobType : document.getElementById('e_jobType').value,
-      location: document.getElementById('e_location').value,
-      detail  : document.getElementById('e_detail').value,
-      reporter: document.getElementById('e_reporter').value,
-      assignee: document.getElementById('e_assignee').value,
-      status  : document.getElementById('e_status').value,
-      doneDate: document.getElementById('e_doneDate').value,
-      note    : document.getElementById('e_note').value
+      date     : parseDMY(document.getElementById('e_date').value),
+      jobNo    : document.getElementById('e_jobNo').value,
+      jobType  : document.getElementById('e_jobType').value,
+      location : document.getElementById('e_location').value,
+      detail   : document.getElementById('e_detail').value,
+      image    : img || '',
+      actionTxt: document.getElementById('e_actionTxt').value,
+      status   : document.getElementById('e_status').value,
+      doneDate : parseDMY(document.getElementById('e_doneDate').value),
+      note     : document.getElementById('e_note').value
     };
   }
 
   try {
     await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
     closeEditModal();
-    setTimeout(fetchAdminData, 1000);
+    setTimeout(fetchAdminData, 1200);
   } catch(e) {
     alert('❌ บันทึกไม่สำเร็จ โปรดลองอีกครั้ง');
+    if (saveBtn) { saveBtn.textContent = '💾 บันทึก'; saveBtn.disabled = false; }
   }
 }
 
